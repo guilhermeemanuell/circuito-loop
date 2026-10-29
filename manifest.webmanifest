@@ -1,0 +1,18 @@
+{
+  "name": "Circuito Loop",
+  "short_name": "Circuito Loop",
+  "description": "Controle de sessões de estudo, tempo, questões, flashcards e caderno de erradas.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f6fa",
+  "theme_color": "#2459a6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
