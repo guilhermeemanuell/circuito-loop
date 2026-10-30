@@ -1,11 +1,12 @@
 /* Service worker do Circuito Loop.
    Para publicar uma nova versão do app, aumente o número em CACHE_VERSION. */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION='v15';
 const CACHE_NAME = 'circuito-loop-' + CACHE_VERSION;
 const APP_SHELL = [
   './',
-  './index.html',
+  './',
   './manifest.webmanifest',
+  './csv-export.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
@@ -38,10 +39,10 @@ self.addEventListener('fetch', event => {
       fetch(req)
         .then(res => {
           const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          caches.open(CACHE_NAME).then(cache => cache.put('./', copy));
           return res;
         })
-        .catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
+        .catch(() => caches.match('./'))
     );
     return;
   }
