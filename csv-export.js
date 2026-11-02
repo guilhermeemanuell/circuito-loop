@@ -23,13 +23,6 @@
       headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E'];
       rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? '')]);
       filename = 'caderno-de-erradas.csv';
-    } else if (kind === 'all') {
-      headers = ['Tipo de dado', 'Data e hora', 'Matéria', 'Tempo de estudo', 'Tempo em segundos', 'Questões respondidas', 'Acertos', 'Erros', 'Aproveitamento (%)', 'Pergunta', 'Resposta', 'Alternativa correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E', 'Anotações'];
-      rows = [];
-      [...(data.records || [])].sort((a,b)=>String(b.date).localeCompare(String(a.date))).forEach(r=>rows.push(['Histórico',r.date,r.subject,duration(r.sec),r.sec,r.q,r.c,Number(r.q)-Number(r.c),r.q?(100*r.c/r.q).toFixed(2):'0.00','','','','','','','','',r.notes]));
-      bySubject(data.flashcards || []).forEach(c=>rows.push(['Flashcard','',''+c.subject,'','','','','','',''+c.question,c.answer,'','','','','','','']));
-      bySubject(data.cadernoErradas || []).forEach(c=>rows.push(['Caderno de Erradas','',''+c.subject,'','','','','','',''+c.question,'',c.correct,...['A','B','C','D','E'].map(k=>c.options?.[k]??''),'']));
-      filename = 'todos-os-dados.csv';
     } else {
       throw new Error('Selecione o conteúdo para exportar.');
     }
