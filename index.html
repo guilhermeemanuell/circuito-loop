@@ -40,6 +40,7 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 </section><section class="card" id="errorsPage" hidden>
 <h2>Caderno de Erradas</h2><p class="muted">Organize suas questões erradas por matéria e revise o conteúdo no seu ritmo.</p>
 <div id="ceCatalogGrid" class="fc-catalog-grid" aria-live="polite"></div><div class="fc-empty-action card-catalog-actions"><button id="ceOpenModal" type="button">Adicionar pergunta</button><button id="ceDeleteOpen" class="red" type="button">Excluir card</button></div>
+<div class="ce-stats" id="ceStats"><div class="ce-stat-card" id="ceStatTotal"></div><div class="ce-stat-card" id="ceStatMonths"></div></div>
 <div id="ceWorkspace" hidden><div class="grid" hidden><div><label for="ceSearch">Buscar cartões</label><input id="ceSearch" placeholder="Buscar pergunta ou resposta"></div></div>
 <div class="fc-card"><div class="fc-row" hidden><strong id="ceCount">0 cartões</strong><span id="ceDue" class="muted"></span></div><div id="ceReview"><p class="muted">Cadastre ou selecione questões erradas para começar.</p></div><div id="ceRevealRow" class="fc-row" style="justify-content:center;align-items:stretch;margin-top:28px"><button id="ceFinish" class="red" type="button" style="flex:1 1 0;min-width:0">Encerrar estudo</button><button id="ceReveal" type="button">Mostrar resposta</button><button id="ceRestart" type="button" hidden>Recomeçar</button></div></div>
 <div id="ceListHeader" hidden style="display:none;justify-content:space-between;align-items:center;gap:10px;margin-top:18px"><h3 style="margin:0">Questões cadastradas</h3><button id="toggleCeList" class="alt" type="button">Expandir</button></div><div id="ceList" hidden></div>
@@ -134,7 +135,46 @@ nav.fc-row button::after{font-weight:var(--title-weight)}
 #ceReview .ce-answer-option span{flex:1 1 auto!important;min-width:0!important;display:block!important;line-height:1.4!important}
 #ceReview .ce-hole-count{font-size:28px!important}
 }</style>
-<style id="rich-and-undo">
+<style id="v25">
+.card-catalog-actions{flex-direction:row!important;flex-wrap:nowrap!important;justify-content:center;align-items:stretch!important;gap:10px!important}
+.card-catalog-actions button{flex:1 1 0!important;min-width:0!important;width:auto!important;max-width:260px;margin:0!important}
+.ce-stats{display:grid;gap:14px;margin:18px 0 6px}
+.ce-stat-card{background:#fff;border:1px solid #dce3ec;border-radius:16px;padding:18px;box-shadow:0 2px 10px rgba(30,41,59,.06);color:#475569}
+.ce-total{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+.ce-donut{position:relative;width:150px;height:150px;flex:none}
+.ce-donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ce-donut b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#334155;font-weight:700}
+.ce-legend{flex:1 1 190px;min-width:170px;max-width:340px;display:grid;gap:14px}
+.ce-legend div{display:flex;align-items:center;gap:10px;font-size:17px}
+.ce-legend i{width:13px;height:13px;border-radius:50%;border:3px solid;box-sizing:border-box;flex:none}
+.ce-legend span{flex:1}
+.ce-legend strong{font-size:22px;color:#334155;font-weight:700;font-variant-numeric:tabular-nums}
+.ce-evo-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ce-evo-head h3{margin:0;font-size:18px;font-weight:400;color:#475569}
+.ce-evo-head h3 b{font-weight:700;color:#334155}
+.ce-evo-range{font-size:13px;color:#94a3b8;margin-top:3px}
+.ce-evo-nav{display:flex;gap:6px;flex:none}
+.ce-evo-nav button{width:36px!important;min-width:0!important;height:36px;padding:0!important;border-radius:50%;font-size:18px;line-height:1;flex:none!important}
+.ce-evo-nav button:disabled{opacity:.35;cursor:default}
+.ce-bars{display:flex;justify-content:space-between;gap:4px;margin-top:14px}
+.ce-bar{flex:1 1 0!important;min-width:0!important;width:auto!important;display:flex!important;flex-direction:column;align-items:center;background:transparent!important;border:0!important;padding:4px 0!important;cursor:pointer;color:#94a3b8!important;font:inherit;box-shadow:none!important;border-radius:8px}
+.ce-bar:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.ce-bar-track{height:160px;display:flex;align-items:flex-end}
+.ce-bar-col{width:14px;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.ce-bar-col i{display:block}
+.ce-bar-label{margin-top:8px;font-size:14px;line-height:1.2;text-align:center}
+.ce-bar-label small{display:block;font-size:11px;opacity:.85}
+.ce-bar[aria-pressed=true] .ce-bar-label{color:#334155;font-weight:700}
+.ce-bar-dot{width:10px;height:10px;border-radius:50%;background:#f97316;margin-top:8px;visibility:hidden}
+.ce-bar[aria-pressed=true] .ce-bar-dot{visibility:visible}
+.ce-sum-title{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:13px;color:#94a3b8}
+.ce-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.ce-sum span{display:block;font-size:13px;color:#94a3b8}
+.ce-sum strong{display:block;font-size:24px;color:#334155;font-weight:700}
+.card-delete-modal fieldset[data-mode] label{display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:500}
+.card-delete-modal fieldset[data-mode] input{width:auto!important;min-height:0!important;margin:0}
+@media (max-width:480px){.ce-total{gap:14px}.ce-donut{width:128px;height:128px}.ce-donut b{font-size:26px}.ce-legend div{font-size:15px}.ce-legend strong{font-size:19px}.ce-sum strong{font-size:20px}.ce-bar-track{height:140px}}
+</style><style id="rich-and-undo">
 .fc-face,.fc-answer,.ce-question{font-weight:400!important}
 .fc-face b,.fc-answer b,.ce-question b,.rich-preview b{font-weight:700!important}
 .fc-face i,.fc-answer i,.ce-question i,.rich-preview i{font-style:italic}
@@ -179,7 +219,7 @@ if(j===1){
   td.appendChild(subjectLink);
 }
 if(j===1&&r.notes&&r.notes.trim()){let mark=document.createElement('span');mark.textContent=' 📝';mark.title='Esta sessão tem anotações salvas';mark.setAttribute('aria-label','Abrir anotações');mark.title='Abrir anotações';mark.setAttribute('role','button');mark.tabIndex=0;mark.style.cursor='pointer';mark.onclick=()=>noteBtn.click();mark.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();noteBtn.click()}};td.appendChild(mark)}tr.appendChild(td)});let td=document.createElement('td'),noteBtn=document.createElement('button');noteBtn.textContent='Anotações';noteBtn.className='alt';noteBtn.title='Anotações';noteBtn.setAttribute('aria-label','Anotações');noteBtn.style.marginRight='6px';noteBtn.disabled=false;noteBtn.onclick=()=>{activeNoteRecord=r;$('notesHeading').textContent='Anotações — '+r.subject; $('notesText').value=r.notes||''; $('notesText').readOnly=false; $('saveNotes').hidden=false; $('saveNotes').textContent='Salvar anotações'; $('closeNotes').textContent='Cancelar'; $('notesModal').hidden=false;$('notesModal').style.display='flex'};td.appendChild(noteBtn);let edit=document.createElement('button');edit.textContent='Editar';edit.className='alt';edit.title='Editar';edit.setAttribute('aria-label','Editar');edit.style.marginRight='6px';edit.onclick=()=>{const choice=prompt('Qual informação deseja editar?\n1 - Matéria\n2 - Anotações\n3 - Questões realizadas\n4 - Acertos\n5 - Tempo estudado\n\nDigite o número da opção:');if(choice===null)return;const fields={'1':{label:'Matéria',key:'subject',value:r.subject},'2':{label:'Anotações',key:'notes',value:r.notes||''},'3':{label:'Questões realizadas',key:'q',value:String(r.q)},'4':{label:'Acertos',key:'c',value:String(r.c)},'5':{label:'Tempo (HH:MM:SS)',key:'sec',value:fmt(r.sec)}};const f=fields[choice];if(!f){alert('Opção inválida.');return}const value=prompt('Editar '+f.label+':',f.value);if(value===null)return;if(f.key==='subject'){if(!value.trim()){alert('A matéria não pode ficar vazia.');return}r.subject=value.trim()}else if(f.key==='notes'){r.notes=value}else if(f.key==='q'||f.key==='c'){const n=Number(value);if(!Number.isInteger(n)||n<0||(f.key==='c'&&n>r.q)||(f.key==='q'&&n<r.c)){alert(f.key==='q'?'Informe um número inteiro não negativo e igual ou maior que os acertos.':'Informe um número inteiro entre zero e o total de questões.');return}r[f.key]=n}else{const m=value.trim().match(/^(\d+):([0-5]\d):([0-5]\d)$/);if(!m){alert('Use o formato HH:MM:SS.');return}r.sec=Number(m[1])*3600+Number(m[2])*60+Number(m[3])}save()};td.appendChild(edit);let b=document.createElement('button');b.textContent='Excluir';b.className='red';b.title='Excluir';b.setAttribute('aria-label','Excluir');b.onclick=()=>{undoable('Registro de estudo excluído',()=>{records.splice(records.indexOf(r),1);save()})};td.appendChild(b);tr.appendChild(td);$('rows').appendChild(tr)});const pager=$('historyPagination');pager.innerHTML='';if(pageCount>1){const prev=document.createElement('button');prev.className='alt';prev.textContent='Anterior';prev.disabled=historyPage===0;prev.onclick=()=>{historyPage--;render()};pager.appendChild(prev);const label=document.createElement('span');label.textContent=`Página ${historyPage+1} de ${pageCount}`;label.style.alignSelf='center';pager.appendChild(label);const next=document.createElement('button');next.className='alt';next.textContent='Próxima';next.disabled=historyPage>=pageCount-1;next.onclick=()=>{historyPage++;render()};pager.appendChild(next)}if(!records.length)$('rows').innerHTML='<tr><td colspan="8" class="muted" style="text-align:center;padding:22px">Nenhuma sessão registrada ainda.</td></tr>';$('timeTotal').textContent=Math.floor(secs/3600)+'h '+String(Math.floor(secs%3600/60)).padStart(2,'0')+'m';$('sessTotal').textContent=records.length;$('qTotal').textContent=qs;const overallRate=qs?100*cs/qs:null;$('rateTotal').textContent=overallRate!==null?overallRate.toFixed(1).replace('.',',')+'%':'—';$('rateTotal').style.color=overallRate===null?'':overallRate<=70?'#B60020':overallRate<=85?'#E9CC00':'#009B00';const subjectStats=$('subjectStats');subjectStats.innerHTML='';subjectStats.style.display='flex';subjectStats.style.flexDirection='column';subjectStats.style.gap='10px';const bySubject=new Map();records.forEach(r=>{const name=(r.subject||'Sem matéria').trim()||'Sem matéria';if(!bySubject.has(name))bySubject.set(name,{sec:0,q:0,c:0});const item=bySubject.get(name);item.sec+=Number(r.sec)||0;item.q+=Number(r.q)||0;item.c+=Number(r.c)||0});[...bySubject.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR',{sensitivity:'base'})).forEach(([name,item])=>{const line=document.createElement('div');line.style.cssText='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:100%';const values=[[name,'Matéria'],[fmtView(item.sec),'Tempo estudado'],[String(item.q),'Questões resolvidas'],[item.q?(100*item.c/item.q).toFixed(1).replace('.',',')+'%':'—','Aproveitamento']];values.forEach(([value,label],i)=>{const card=document.createElement('div');card.className='stat';card.style.cssText='min-width:0;box-sizing:border-box';const strong=document.createElement('b');strong.textContent=value;strong.style.cssText='display:block;overflow-wrap:anywhere;font-size:'+(i===0?'16px':'18px');if(i===3&&item.q){const rate=100*item.c/item.q;strong.style.color=rate<=70?'#B60020':rate<=85?'#E9CC00':'#009B00'}const caption=document.createElement('span');caption.textContent=label;caption.style.cssText='display:block;margin-top:4px';card.appendChild(strong);card.appendChild(caption);line.appendChild(card)});subjectStats.appendChild(line)});if(!bySubject.size){const empty=document.createElement('div');empty.className='muted';empty.textContent='Os totais por matéria aparecerão após os primeiros registros.';subjectStats.appendChild(empty)}}
-function save(){localStorage.setItem(KEY,JSON.stringify(records));render()}
+function save(){localStorage.setItem(KEY,JSON.stringify(records));render();ceStatsRender()}
 $('toggleCircuit').onclick=()=>{const body=$('circuitBody'),hide=!body.hidden;body.hidden=hide;$('toggleCircuit').textContent=hide?'Expandir':'Minimizar';$('circuitTitle').textContent=hide?'Circuito'+($('circuitName').value.trim()?' — '+$('circuitName').value.trim():''):'Matérias do circuito'};
 $('circuitSelect').onchange=()=>{if(mode!=='idle'){alert('Pare ou salve a sessão antes de trocar de circuito.');renderCircuitChoices();return}selectedCircuit=$('circuitSelect').value;if(!selectedCircuit){$('circuitName').value='';subjects=[];currentIndex=0;saveSubjects();return}const c=circuits.find(x=>x.id===selectedCircuit);if(c){$('circuitName').value=c.name;if($('circuitBody').hidden)$('circuitTitle').textContent='Circuito — '+c.name;subjects=[...c.subjects];currentIndex=c.subjects.length?Math.max(0,Math.min(Number.isInteger(Number(c.index))?Number(c.index):0,c.subjects.length-1)):0;saveSubjects()}};
 $('clearSubjects').onclick=()=>{if(mode!=='idle'){alert('Pare ou salve a sessão antes de excluir as matérias.');return}if(!subjects.length){alert('Não há matérias para excluir.');return}if(confirm('Excluir todas as '+subjects.length+' matérias deste circuito? O circuito salvo será atualizado e ficará sem matérias.')){undoable('Matérias do circuito excluídas',()=>{subjects=[];currentIndex=0;saveSubjects()})}};$('circuitName').addEventListener('change',()=>{if(mode==='idle')autoSaveCurrentCircuit()});$('saveCircuit').onclick=()=>{if(mode!=='idle'){alert('Pare ou salve a sessão antes de salvar o circuito.');return}const name=$('circuitName').value.trim();if(!name){alert('Informe um nome para o circuito.');return}if(!subjects.length){alert('Adicione ao menos uma matéria antes de salvar o circuito.');return}let c=circuits.find(x=>x.id===selectedCircuit);if(c){c.name=name;c.subjects=[...subjects];c.index=currentIndex}else{c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,subjects:[...subjects],index:currentIndex};circuits.push(c);selectedCircuit=c.id}saveCircuits();alert('Circuito salvo!')};
@@ -306,7 +346,7 @@ async function ceUseImage(file){
  finally{ceImageBusy=false}
 }
 $('ceImageFile').onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)ceUseImage(f)};
-$('cePreview').onclick=()=>{if(CircuitoImg.isTouch()&&$('cePreview').getAttribute('src'))CircuitoImg.view($('cePreview').src)};
+$('cePreview').onclick=()=>{if($('cePreview').getAttribute('src'))CircuitoImg.view($('cePreview').src)};$('cePreview').style.cursor='zoom-in';
 $('ceImageRemove').onclick=()=>{ceImageId='';$('ceImageMsg').textContent='Imagem removida (vale ao salvar).';ceImageRefresh()};
 document.addEventListener('paste',e=>{
  if($('ceModal').hidden)return;
@@ -369,7 +409,7 @@ function ceRenderReview(){
  review.innerHTML='';
  const head=document.createElement('div');head.className='fc-row';head.style.marginBottom='10px';
  const title=document.createElement('strong');title.textContent='Pergunta '+(ceIndex+1)+' de '+items.length;head.appendChild(title);review.appendChild(head);
- const q=document.createElement('p');q.className='ce-question';q.style.fontWeight='400';q.style.margin='0 0 14px';q.innerHTML=richHtml(c.question);review.appendChild(q);if(c.image){const im=document.createElement('img');im.alt='Imagem da questão';im.style.cssText='display:block;max-width:100%;max-height:45vh;margin:0 auto 14px;border-radius:8px;cursor:zoom-in;object-fit:contain';im.onclick=()=>{if(CircuitoImg.isTouch()){CircuitoImg.view(im.currentSrc||im.src);return}const z=im.style.maxHeight==='none';im.style.maxHeight=z?'45vh':'none';im.style.cursor=z?'zoom-in':'zoom-out'};ceImgInto(im,c.image);review.appendChild(im);if(CircuitoImg.isTouch()){const hn=document.createElement('p');hn.className='note';hn.dataset.hint='1';hn.style.cssText='text-align:center;margin:-6px 0 14px';hn.textContent='🔍 Toque na imagem para ampliar';review.appendChild(hn)}}
+ const q=document.createElement('p');q.className='ce-question';q.style.fontWeight='400';q.style.margin='0 0 14px';q.innerHTML=richHtml(c.question);review.appendChild(q);if(c.image){const im=document.createElement('img');im.alt='Imagem da questão';im.style.cssText='display:block;max-width:100%;max-height:45vh;margin:0 auto 14px;border-radius:8px;cursor:zoom-in;object-fit:contain';im.onclick=()=>CircuitoImg.view(im.currentSrc||im.src);ceImgInto(im,c.image);review.appendChild(im);{const hn=document.createElement('p');hn.className='note';hn.dataset.hint='1';hn.style.cssText='text-align:center;margin:-6px 0 14px';hn.textContent=CircuitoImg.isTouch()?'🔍 Toque na imagem para ampliar':'🔍 Clique na imagem para ampliar';review.appendChild(hn)}}
  const opts=document.createElement('div');opts.style.display='grid';opts.style.gap='8px';
  if(ceOptionOrder.length!==5||ceOptionOrder.some(k=>!c.options[k])){ceOptionOrder=['A','B','C','D','E'].sort(()=>Math.random()-0.5)}
  ceOptionOrder.forEach((sourceKey,index)=>{
@@ -425,7 +465,49 @@ function ceOpenStudy(subject){
 }
 $('ceStudyClose').onclick=()=>{$('ceStudyModal').hidden=true;ceQueue=[];ceActiveSubject='';ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;$('errorsPage').appendChild($('ceWorkspace'));$('ceWorkspace').hidden=true;ceRender()};
 
+function ceStatsRender(){
+ const tot=$('ceStatTotal'),mon=$('ceStatMonths');if(!tot||!mon)return;
+ const S=ceStatsRender.s||(ceStatsRender.s={end:null,sel:null});
+ const AB=['jan.','fev.','mar.','abr.','mai.','jun.','jul.','ago.','set.','out.','nov.','dez.'],FULL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+ const mk=d=>d.getFullYear()*12+d.getMonth(),byMonth=new Map();let q=0,c=0;
+ records.forEach(r=>{
+  if(!r||r.notes!=='Caderno de Erradas')return;
+  const rq=Math.max(0,Math.floor(Number(r.q)||0)),rc=Math.min(rq,Math.max(0,Math.floor(Number(r.c)||0)));
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(r.date||'')),d=m?new Date(+m[1],+m[2]-1,+m[3]):new Date(r.date);
+  if(isNaN(d.getTime()))return;
+  const k=mk(d),o=byMonth.get(k)||{q:0,c:0};o.q+=rq;o.c+=rc;byMonth.set(k,o);q+=rq;c+=rc;
+ });
+ /* --- 1) resumo geral --- */
+ const w=q-c,pct=q?Math.round(c*100/q):0,C=2*Math.PI*48,arcC=q?C*c/q:0,arcW=q?C*w/q:0;
+ const ring=(col,dash,off)=>'<circle cx="60" cy="60" r="48" fill="none" stroke="'+col+'" stroke-width="14" stroke-dasharray="'+dash+' '+C+'"'+(off?' stroke-dashoffset="'+off+'"':'')+'/>';
+ tot.innerHTML='<div class="ce-total"><div class="ce-donut" role="img" aria-label="'+(q?pct+'% de aproveitamento':'Sem questões resolvidas')+'"><svg viewBox="0 0 120 120" aria-hidden="true">'+ring('#e5e7eb',C,0)+(q?ring('#3b82f6',arcC,0)+ring('#ef4444',arcW,-arcC):'')+'</svg><b>'+(q?pct+'%':'—')+'</b></div>'
+  +'<div class="ce-legend"><div><i style="border-color:#94a3b8"></i><span>Resolvidas</span><strong>'+q+'</strong></div><div><i style="border-color:#3b82f6"></i><span>Certas</span><strong>'+c+'</strong></div><div><i style="border-color:#ef4444"></i><span>Erradas</span><strong>'+w+'</strong></div></div></div>';
+ /* --- 2) evolução mensal --- */
+ const N=6,cur=mk(new Date());
+ if(S.end===null||S.end>cur)S.end=cur;
+ const keys=[...byMonth.keys()],minK=keys.length?Math.min(...keys):cur,start=S.end-N+1;
+ if(S.sel===null||S.sel<start||S.sel>S.end)S.sel=S.end;
+ let max=1;for(let k=start;k<=S.end;k++)max=Math.max(max,(byMonth.get(k)||{q:0}).q);
+ let bars='';
+ for(let k=start;k<=S.end;k++){
+  const o=byMonth.get(k)||{q:0,c:0},on=k===S.sel,y=Math.floor(k/12),mo=k%12;
+  const h=o.q?Math.max(12,Math.round(o.q/max*160)):6,cH=o.q?Math.round(h*o.c/o.q):0,wH=h-cH;
+  const cc=on?'#3b82f6':'#9d96d3',wc=on?'#ef4444':'#f4a7a7';
+  const col=o.q?'<i style="height:'+wH+'px;background:'+wc+'"></i><i style="height:'+cH+'px;background:'+cc+'"></i>':'<i style="height:6px;background:#e5e7eb"></i>';
+  bars+='<button type="button" class="ce-bar" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+FULL[mo]+' de '+y+': '+o.q+' resolvidas, '+o.c+' certas, '+(o.q-o.c)+' erradas"><span class="ce-bar-track"><span class="ce-bar-col">'+col+'</span></span><span class="ce-bar-label">'+AB[mo]+'<small>'+y+'</small></span><span class="ce-bar-dot"></span></button>';
+ }
+ const sel=byMonth.get(S.sel)||{q:0,c:0},sp=sel.q?Math.round(sel.c*100/sel.q):null,sy=Math.floor(S.sel/12),sm=S.sel%12;
+ const spc=sp===null?'#94a3b8':sp>=70?'#16a34a':sp>=50?'#d97706':'#dc2626';
+ mon.innerHTML='<div class="ce-evo-head"><div><h3>Sua evolução em <b>'+N+' meses</b></h3><div class="ce-evo-range">'+AB[start%12]+' '+Math.floor(start/12)+' – '+AB[S.end%12]+' '+Math.floor(S.end/12)+'</div></div>'
+  +'<div class="ce-evo-nav"><button type="button" class="alt" data-nav="-1" aria-label="Meses anteriores"'+(start>minK?'':' disabled')+'>‹</button><button type="button" class="alt" data-nav="1" aria-label="Próximos meses"'+(S.end<cur?'':' disabled')+'>›</button></div></div>'
+  +'<div class="ce-bars" role="group" aria-label="Questões por mês">'+bars+'</div>'
+  +'<div class="ce-sum-title">Resumo de '+FULL[sm]+' de '+sy+'</div>'
+  +'<div class="ce-sum"><div><span>Resolvidas</span><strong>'+sel.q+'</strong></div><div><span>Certas</span><strong>'+sel.c+'</strong></div><div><span>Erradas</span><strong>'+(sel.q-sel.c)+'</strong></div><div><span>Rendimento</span><strong style="color:'+spc+'">'+(sp===null?'—':sp+'%')+'</strong></div></div>';
+ mon.querySelectorAll('.ce-bar').forEach(b=>b.onclick=()=>{S.sel=+b.dataset.k;ceStatsRender()});
+ mon.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{S.end=Math.min(cur,S.end+N*(+b.dataset.nav));S.sel=S.end;ceStatsRender()});
+}
 function ceRender(){
+ ceStatsRender();
  const catalog=$('ceCatalogGrid');if(!catalog)return;catalog.innerHTML='';
  const names=[...new Set(cadernoErradas.map(card=>String(card.subject||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
  const groups=names.map(name=>({name,count:cadernoErradas.filter(c=>c.subject===name).length}));
@@ -456,27 +538,38 @@ $('toggleFcList').onclick=()=>{const list=$('fcList'),hide=!list.hidden;list.hid
 function fcGrade(kind){const c=flashcards.find(card=>card.id===fcQueue[fcIndex]);if(!c||!fcRevealed||fcReviewDone)return;const intervals=kind==='hard'?[1,2,4,7,14,30,60]:[1,3,7,14,30,60];if(kind==='again'){c.due=Date.now()+10*60*1000;c.stage=0}else{c.stage=Math.min((c.stage||0)+1,intervals.length-1);c.due=Date.now()+intervals[c.stage]*86400000}fcStats[kind]=(fcStats[kind]||0)+1;fcIndex++;fcRevealed=false;if(fcIndex>=fcQueue.length)fcReviewDone=true;fcSave()}
 $('fcAgain').onclick=()=>fcGrade('again');$('fcHard').onclick=()=>fcGrade('hard');$('fcEasy').onclick=()=>fcGrade('easy');$('fcRestart').onclick=()=>{fcStats={again:0,hard:0,easy:0};fcQueue=fcFiltered().map(c=>c.id);fcIndex=0;fcRevealed=false;fcReviewDone=false;fcRender()};
 /* Independent deletion actions share only presentation, never card collections. */
-function setupCardDeletion(prefix,heading,getCards,deleteSubject){
+function setupCardDeletion(prefix,heading,getCards,deleteSubject,deleteItem){
  const opener=$(prefix+'DeleteOpen');
  const modal=document.createElement('div');modal.id=prefix+'DeleteModal';modal.className='fc-modal card-delete-modal';modal.hidden=true;
- modal.innerHTML='<div class="fc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="'+prefix+'DeleteHeading"><h2 id="'+prefix+'DeleteHeading">'+heading+'</h2><div data-picker><label for="'+prefix+'DeleteSubject">Matéria</label><select id="'+prefix+'DeleteSubject"><option value="">Selecione um card</option></select></div><div data-confirm hidden><h3>Excluir este card inteiro?</h3><p class="card-delete-preview"></p><p>Todas as perguntas, respostas e registros deste card serão apagados nesta página. Logo depois você terá alguns segundos para tocar em “Desfazer”.</p></div><p class="note" role="status"></p><div class="actions"><button class="alt" type="button" data-cancel>Cancelar</button><button class="red" type="button" data-next disabled>Continuar</button></div></div>';
+ modal.innerHTML='<div class="fc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="'+prefix+'DeleteHeading"><h2 id="'+prefix+'DeleteHeading">'+heading+'</h2><div data-picker><fieldset data-mode style="border:0;margin:0 0 10px;padding:0"><label><input type="radio" name="'+prefix+'DelMode" value="all" checked> Card inteiro (todas as '+(prefix==='fc'?'cartões':'perguntas')+' da matéria)</label><label><input type="radio" name="'+prefix+'DelMode" value="one"> Apenas '+(prefix==='fc'?'um cartão':'uma pergunta')+'</label></fieldset><label for="'+prefix+'DeleteSubject">Matéria</label><select id="'+prefix+'DeleteSubject"><option value="">Selecione um card</option></select><div data-itemrow hidden style="margin-top:10px"><label for="'+prefix+'DeleteItem">'+(prefix==='fc'?'Cartão':'Pergunta')+'</label><select id="'+prefix+'DeleteItem"></select></div></div><div data-confirm hidden><h3 data-confirmtitle>Excluir este card inteiro?</h3><p class="card-delete-preview"></p><p data-confirmtext>Todas as perguntas, respostas e registros deste card serão apagados nesta página. Logo depois você terá alguns segundos para tocar em “Desfazer”.</p></div><p class="note" role="status"></p><div class="actions"><button class="alt" type="button" data-cancel>Cancelar</button><button class="red" type="button" data-next disabled>Continuar</button></div></div>';
  document.body.appendChild(modal);
  const select=$(prefix+'DeleteSubject'),picker=modal.querySelector('[data-picker]'),confirmation=modal.querySelector('[data-confirm]'),next=modal.querySelector('[data-next]'),message=modal.querySelector('[role=status]');
- let selectedSubject=null,confirming=false;
+ let selectedSubject=null,confirming=false,mode='all',selectedItem=null;const itemRow=modal.querySelector('[data-itemrow]'),itemSel=$(prefix+'DeleteItem');
  function close(){selectedSubject=null;confirming=false;modal.hidden=true;opener.focus()}
- function selectSubject(){selectedSubject=select.value||null;const count=getCards().filter(card=>cardSubjectKey(card.subject)===selectedSubject).length;next.disabled=!count;message.textContent=count?count+' '+(prefix==='fc'?'cartão(ões)':'pergunta(s)')+' neste card.':''}
- opener.onclick=()=>{selectedSubject=null;confirming=false;picker.hidden=false;confirmation.hidden=true;next.disabled=true;message.textContent='';select.innerHTML='<option value="">Selecione um card</option>';const groups=new Map();getCards().forEach(card=>{const key=cardSubjectKey(card.subject);if(!groups.has(key))groups.set(key,String(card.subject||'Sem matéria').trim()||'Sem matéria')});[...groups].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).forEach(([key,subject])=>{const option=document.createElement('option');option.value=key;option.textContent=subject;select.appendChild(option)});select.disabled=!groups.size;if(!groups.size)message.textContent='Nenhum card cadastrado.';modal.hidden=false;(select.disabled?modal.querySelector('[data-cancel]'):select).focus()};
+ function itemLabel(c){const t=richPlain(c.question||'');return t.length>80?t.slice(0,77)+'…':t}
+ function subjectCards(){return getCards().filter(card=>cardSubjectKey(card.subject)===selectedSubject)}
+ function fillItems(){itemSel.innerHTML='<option value="">Selecione '+(prefix==='fc'?'um cartão':'uma pergunta')+'</option>';selectedItem=null;if(selectedSubject)subjectCards().forEach((c,i)=>{const o=document.createElement('option');o.value=c.id;o.textContent=(i+1)+'. '+itemLabel(c);itemSel.appendChild(o)})}
+ function refresh(){const count=subjectCards().length;itemRow.hidden=mode!=='one'||!selectedSubject;next.disabled=mode==='one'?!selectedItem:!count;message.textContent=count?count+' '+(prefix==='fc'?'cartão(ões)':'pergunta(s)')+' neste card.':''}
+ function selectSubject(){selectedSubject=select.value||null;fillItems();refresh()}
+ itemSel.onchange=()=>{selectedItem=itemSel.value||null;refresh()};
+ modal.querySelectorAll('input[name="'+prefix+'DelMode"]').forEach(r=>r.onchange=()=>{mode=r.value;refresh()});
+ opener.onclick=()=>{selectedSubject=null;confirming=false;mode='all';selectedItem=null;itemRow.hidden=true;modal.querySelector('input[value=all]').checked=true;picker.hidden=false;confirmation.hidden=true;next.disabled=true;message.textContent='';select.innerHTML='<option value="">Selecione um card</option>';const groups=new Map();getCards().forEach(card=>{const key=cardSubjectKey(card.subject);if(!groups.has(key))groups.set(key,String(card.subject||'Sem matéria').trim()||'Sem matéria')});[...groups].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).forEach(([key,subject])=>{const option=document.createElement('option');option.value=key;option.textContent=subject;select.appendChild(option)});select.disabled=!groups.size;if(!groups.size)message.textContent='Nenhum card cadastrado.';modal.hidden=false;(select.disabled?modal.querySelector('[data-cancel]'):select).focus()};
  select.onchange=selectSubject;
  modal.querySelector('[data-cancel]').onclick=close;
  modal.onclick=e=>{if(e.target===modal)close()};
  modal.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();close();return}if(e.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),select:not(:disabled)')].filter(el=>el.getClientRects().length);const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};
- next.onclick=()=>{if(!selectedSubject)return;const cards=getCards().filter(card=>cardSubjectKey(card.subject)===selectedSubject);if(!cards.length)return;if(!confirming){confirming=true;picker.hidden=true;confirmation.hidden=false;modal.querySelector('.card-delete-preview').textContent=select.selectedOptions[0].textContent+' — '+cards.length+' '+(prefix==='fc'?'cartão(ões)':'pergunta(s)');message.textContent='';modal.querySelector('[data-cancel]').focus();return}undoable('Card “'+select.selectedOptions[0].textContent+'” excluído ('+cards.length+' '+(prefix==='fc'?(cards.length===1?'cartão':'cartões'):(cards.length===1?'pergunta':'perguntas'))+')',()=>deleteSubject(selectedSubject));close()};
+ next.onclick=()=>{if(mode==='one'){const item=getCards().find(c=>c.id===selectedItem);if(!item)return;const subj=select.selectedOptions[0].textContent;
+  if(!confirming){confirming=true;picker.hidden=true;confirmation.hidden=false;confirmation.querySelector('[data-confirmtitle]').textContent=prefix==='fc'?'Excluir este cartão?':'Excluir esta pergunta?';confirmation.querySelector('[data-confirmtext]').textContent='Somente este item será apagado; o restante do card continua. Logo depois você terá alguns segundos para tocar em “Desfazer”.';modal.querySelector('.card-delete-preview').textContent=subj+' — '+itemLabel(item);message.textContent='';modal.querySelector('[data-cancel]').focus();return}
+  undoable(prefix==='fc'?'Cartão excluído':'Pergunta excluída',()=>deleteItem(item.id));close();return}
+  if(!selectedSubject)return;const cards=getCards().filter(card=>cardSubjectKey(card.subject)===selectedSubject);if(!cards.length)return;if(!confirming){confirming=true;picker.hidden=true;confirmation.hidden=false;confirmation.querySelector('[data-confirmtitle]').textContent='Excluir este card inteiro?';confirmation.querySelector('[data-confirmtext]').textContent='Todas as perguntas, respostas e registros deste card serão apagados nesta página. Logo depois você terá alguns segundos para tocar em “Desfazer”.';modal.querySelector('.card-delete-preview').textContent=select.selectedOptions[0].textContent+' — '+cards.length+' '+(prefix==='fc'?'cartão(ões)':'pergunta(s)');message.textContent='';modal.querySelector('[data-cancel]').focus();return}undoable('Card “'+select.selectedOptions[0].textContent+'” excluído ('+cards.length+' '+(prefix==='fc'?(cards.length===1?'cartão':'cartões'):(cards.length===1?'pergunta':'perguntas'))+')',()=>deleteSubject(selectedSubject));close()};
 }
 function cardSubjectKey(subject){return String(subject||'Sem matéria').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')||'sem matéria'}
 function fcDeleteSubject(key){if(cardSubjectKey(fcActiveSubject)===key&&!$('fcStudyModal').hidden)$('fcStudyClose').click();flashcards=flashcards.filter(card=>cardSubjectKey(card.subject)!==key);fcSave()}
 function ceDeleteSubject(key){if(cardSubjectKey(ceActiveSubject)===key&&!$('ceStudyModal').hidden)$('ceStudyClose').click();cadernoErradas=cadernoErradas.filter(card=>cardSubjectKey(card.subject)!==key);Object.keys(ceRecentQueues).forEach(subject=>{if(cardSubjectKey(subject)===key)delete ceRecentQueues[subject]});localStorage.setItem(CEQUEUEKEY,JSON.stringify(ceRecentQueues));ceSave()}
-setupCardDeletion('fc','Excluir card — Flashcards',()=>flashcards,fcDeleteSubject);
-setupCardDeletion('ce','Excluir card — Caderno de Erradas',()=>cadernoErradas,ceDeleteSubject);
+function fcDeleteItem(id){const c=flashcards.find(x=>x.id===id);if(c&&cardSubjectKey(fcActiveSubject)===cardSubjectKey(c.subject)&&!$('fcStudyModal').hidden)$('fcStudyClose').click();flashcards=flashcards.filter(x=>x.id!==id);fcSave()}
+function ceDeleteItem(id){const c=cadernoErradas.find(x=>x.id===id);if(c&&cardSubjectKey(ceActiveSubject)===cardSubjectKey(c.subject)&&!$('ceStudyModal').hidden)$('ceStudyClose').click();cadernoErradas=cadernoErradas.filter(x=>x.id!==id);ceSave()}
+setupCardDeletion('fc','Excluir — Flashcards',()=>flashcards,fcDeleteSubject,fcDeleteItem);
+setupCardDeletion('ce','Excluir — Caderno de Erradas',()=>cadernoErradas,ceDeleteSubject,ceDeleteItem);
 render();renderCircuitChoices();if(selectedCircuit){const activeSaved=circuits.find(c=>c.id===selectedCircuit);if(activeSaved)$('circuitName').value=activeSaved.name||''}renderSubjects();restoreDraft();$('circuitBody').hidden=true;$('toggleCircuit').textContent='Expandir';$('circuitTitle').textContent='Circuito'+($('circuitName').value.trim()?' — '+$('circuitName').value.trim():'');controls();clock();fcRender();
 /* ===== Sincronização entre dispositivos (arquivo JSON em um repositório do GitHub) ===== */
 (()=>{

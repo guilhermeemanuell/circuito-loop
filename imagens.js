@@ -91,12 +91,12 @@
     if (!src || document.getElementById('imgViewer')) return;
     const ov = document.createElement('div'); ov.id = 'imgViewer';
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Imagem ampliada');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:300;background:#000;touch-action:none;overflow:hidden;display:flex;align-items:center;justify-content:center;-webkit-user-select:none;user-select:none';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:300;cursor:grab;background:#000;touch-action:none;overflow:hidden;display:flex;align-items:center;justify-content:center;-webkit-user-select:none;user-select:none';
     const img = document.createElement('img'); img.alt = 'Imagem ampliada'; img.draggable = false; img.src = src;
     img.style.cssText = 'position:absolute;left:50%;top:50%;transform-origin:center center;max-width:none;max-height:none;pointer-events:none;will-change:transform';
     const btn = (txt, label, pos) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label; b.style.cssText = 'position:absolute;top:calc(12px + env(safe-area-inset-top));' + pos + ';width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(30,30,30,.72);color:#fff;font-size:22px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer'; return b; };
     const close = btn('✕', 'Fechar imagem', 'right:12px'), rotate = btn('↻', 'Girar imagem', 'left:12px');
-    const hint = document.createElement('div'); hint.textContent = 'Pince para ampliar • toque duas vezes para aproximar • ↻ gira a imagem';
+    const hint = document.createElement('div'); hint.textContent = isTouch() ? 'Pince para ampliar • toque duas vezes para aproximar • ↻ gira a imagem' : 'Role o mouse para ampliar • clique duas vezes para aproximar • arraste para mover • Esc fecha';
     hint.style.cssText = 'position:absolute;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;color:#fff;font:14px system-ui,sans-serif;background:rgba(30,30,30,.72);border-radius:10px;padding:8px 10px;transition:opacity .6s;pointer-events:none';
     ov.append(img, rotate, close, hint); document.body.appendChild(ov);
     const prevOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
@@ -150,7 +150,7 @@
       if (s < 1.02) { s = 1; paint(); }
     };
     ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
-    ov.addEventListener('wheel', e => { e.preventDefault(); s = clamp(s * (e.deltaY < 0 ? 1.15 : 0.87), 1, 8); paint(); }, { passive: false });
+    ov.addEventListener('wheel', e => { e.preventDefault(); const c = center(), r = ov.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, vx = (px - c[0] - x) / s, vy = (py - c[1] - y) / s; s = clamp(s * (e.deltaY < 0 ? 1.15 : 0.87), 1, 8); x = px - c[0] - s * vx; y = py - c[1] - s * vy; paint(); }, { passive: false });
 
     let closed = false, pushed = false;
     function cleanup() { if (closed) return; closed = true; window.removeEventListener('resize', onResize); window.removeEventListener('popstate', onPop); document.removeEventListener('keydown', onKey, true); document.body.style.overflow = prevOverflow; ov.remove(); }
