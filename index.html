@@ -730,6 +730,8 @@ async function ghPutImage(id,buf){
     throw httpErr(res.status);
   }
 }
+const imgUnusedDir=()=>{const i=cfg.path.lastIndexOf('/');return (i>=0?cfg.path.slice(0,i+1):'')+'circuito-loop-imagens-nao-utilizadas'};
+const imgUnusedApi=name=>'/repos/'+cfg.repo+'/contents/'+(imgUnusedDir()+(name?'/'+name:'')).split('/').map(encodeURIComponent).join('/');
 async function syncImages(m){
   const ids=[...new Set(m.caderno.map(c=>c&&c.image).filter(Boolean))];
   if(!ids.length)return;
@@ -739,13 +741,46 @@ async function syncImages(m){
   else if(lr.status!==404)throw httpErr(lr.status);
   for(const id of ids){                                   /* 1º envia (antes de publicar o JSON que as cita) */
     if(remoteSet.has(id))continue;
-    const buf=await CircuitoImg.getBuffer(id).catch(()=>null);
+    let buf=await CircuitoImg.getBuffer(id).catch(()=>null);
+    if(!buf){                                            /* questão restaurada (ex.: "Desfazer"): busca a imagem na pasta de não utilizadas */
+      try{const r=await api(imgUnusedApi(id+'.jpg')+q,{headers:{'Accept':'application/vnd.github.raw+json'}});if(r.ok){const b=await r.arrayBuffer();if(b.byteLength){await CircuitoImg.putBuffer(id,b);buf=b}}}catch(e){}
+    }
     if(buf)await ghPutImage(id,buf);
   }
   for(const id of ids){                                   /* 2º baixa as que faltam neste aparelho */
     if(!remoteSet.has(id)||await CircuitoImg.has(id))continue;
     try{const r=await api(imgApi(id+'.jpg')+q,{headers:{'Accept':'application/vnd.github.raw+json'}});if(r.ok){const b=await r.arrayBuffer();if(b.byteLength)await CircuitoImg.putBuffer(id,b)}}catch(e){}
   }
+}
+
+/* Move para circuito-loop-imagens-nao-utilizadas as imagens que estavam em uso e deixaram de ser citadas por qualquer questão.
+   Só considera imagens que já foram citadas em dados sincronizados (base/remoto/local), então nunca mexe numa imagem
+   que outro aparelho acabou de enviar e ainda não publicou. Usa a Git Data API: um único commit move todas. */
+async function archiveUnusedImages(merged,sources){
+  const refs=new Set((merged.caderno||[]).map(c=>c&&c.image).filter(Boolean));
+  const cand=new Set();
+  sources.forEach(d=>{if(d&&Array.isArray(d.caderno))d.caderno.forEach(c=>{const id=c&&c.image;if(id&&!refs.has(id))cand.add(id)})});
+  if(!cand.size)return;
+  const q=cfg.branch?'?ref='+encodeURIComponent(cfg.branch):'';
+  const lr=await api(imgApi('')+q);if(!lr.ok)return;
+  const arr=await lr.json();if(!Array.isArray(arr))return;
+  const files=arr.filter(f=>f&&f.type==='file'&&f.sha&&cand.has(String(f.name).replace(/\.jpg$/,'')));
+  if(!files.length)return;
+  const enc=x=>x.split('/').map(encodeURIComponent).join('/');
+  let br=cfg.branch;
+  if(!br){const rr=await api('/repos/'+cfg.repo);if(!rr.ok)return;br=(await rr.json()).default_branch}
+  const refR=await api('/repos/'+cfg.repo+'/git/ref/heads/'+enc(br));if(!refR.ok)return;
+  const head=(await refR.json()).object.sha;
+  const cR=await api('/repos/'+cfg.repo+'/git/commits/'+head);if(!cR.ok)return;
+  const baseTree=(await cR.json()).tree.sha;
+  const from=imgDir(),to=imgUnusedDir(),tree=[];
+  files.forEach(f=>{tree.push({path:to+'/'+f.name,mode:'100644',type:'blob',sha:f.sha});tree.push({path:from+'/'+f.name,mode:'100644',type:'blob',sha:null})});
+  const hdr={'Content-Type':'application/json'};
+  const tR=await api('/repos/'+cfg.repo+'/git/trees',{method:'POST',headers:hdr,body:J({base_tree:baseTree,tree})});if(!tR.ok)return;
+  const tSha=(await tR.json()).sha;
+  const mR=await api('/repos/'+cfg.repo+'/git/commits',{method:'POST',headers:hdr,body:J({message:'Circuito Loop: '+files.length+(files.length===1?' imagem movida':' imagens movidas')+' para não utilizadas',tree:tSha,parents:[head]})});if(!mR.ok)return;
+  const cSha=(await mR.json()).sha;
+  await api('/repos/'+cfg.repo+'/git/refs/heads/'+enc(br),{method:'PATCH',headers:hdr,body:J({sha:cSha})});
 }
 
 async function syncNow(manual){
@@ -762,12 +797,13 @@ async function syncNow(manual){
         let d;try{d=JSON.parse(rem.text)}catch(e){throw new Error('O arquivo no GitHub não é um JSON válido; nada foi alterado.')}
         const p=fromRemote(d);remote=p.data;rts=p.changedAt;
       }
-      const local=snap(),merged=remote?mergeAll(st.base,local,remote,rts):local;
+      const local=snap(),prevBase=st.base,merged=remote?mergeAll(st.base,local,remote,rts):local;
       if(window.CircuitoImg)await syncImages(merged);
       const ts={};COLS.forEach(c=>{ts[c]=Math.max(st.changedAt[c]||0,rts[c]||0)});
       if(!remote||!same(remote,merged)){
         try{await ghPut(toRemote(merged,ts),rem.sha)}catch(e){if((e.status===409||e.status===422)&&i<2)continue;throw e}
       }
+      if(window.CircuitoImg)await archiveUnusedImages(merged,[prevBase,remote,local]).catch(()=>{});   /* depois de publicar o JSON; falha aqui não quebra a sincronização */
       if(same(snap(),local)){apply(merged);st.base=snap();st.changedAt=ts;st.dirty=false}
       else again=true; /* algo mudou durante a sincronização: roda de novo em seguida */
       st.lastSync=Date.now();persist();break;
@@ -1035,7 +1071,7 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 #fcStudyModal,#ceStudyModal{overscroll-behavior:contain;overflow:hidden!important}
 #fcStudyModal .fc-modal-dialog,#ceStudyModal .fc-modal-dialog{overscroll-behavior:contain}
 /* Bloco de regras dos níveis e tile "Todas as matérias" */
-.fc-rules{border:1px solid #dce3ec;border-radius:12px;padding:16px;margin:0 0 20px;background:#fff}
+.fc-rules{border:1px solid #dce3ec;border-radius:12px;padding:16px;margin:18px 0 6px;background:#fff;box-shadow:0 2px 10px rgba(30,41,59,.06)}
 .fc-rules h3{margin:0 0 6px}.fc-rules>p.muted{margin:0 0 14px}
 .fc-rule{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #eef2f7}
 .fc-rule:first-of-type{border-top:0}
