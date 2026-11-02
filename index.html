@@ -183,7 +183,7 @@ nav.fc-row button::after{font-weight:var(--title-weight)}
 .rich-bar button{flex:none!important;min-width:0!important;width:42px!important;height:36px!important;padding:0!important;font-size:15px!important;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
 .rich-preview{margin:6px 0 4px;padding:8px 10px;border:1px dashed rgba(128,128,128,.5);border-radius:8px;font-size:15px;line-height:1.45;font-weight:400;white-space:normal}
 .rich-preview::before{content:"Prévia";display:block;font-size:12px;opacity:.65;margin-bottom:2px}
-#undoToast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:400;display:flex;align-items:center;gap:18px;white-space:nowrap;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;padding:7px 16px;border-radius:999px;background:#1f2937;color:#fff;font-size:14px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+#undoToast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:400;display:flex;align-items:center;justify-content:space-between;gap:40px;white-space:nowrap;min-width:260px;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;padding:11px 24px;border-radius:999px;background:#1f2937;color:#fff;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 #undoToast[hidden]{display:none}
 #undoToast button{flex:none;width:auto;min-width:0;background:transparent!important;color:#93c5fd!important;border:0!important;font-weight:700;font-size:14px;padding:4px 0;cursor:pointer;box-shadow:none;text-decoration:underline}
 @media (max-width:640px){#undoToast{bottom:calc(92px + env(safe-area-inset-bottom))}}
@@ -299,7 +299,7 @@ let undoTimer=null;
 function undoHide(){$('undoToast').hidden=true;clearTimeout(undoTimer)}
 function undoShow(msg,fn,ms){
  $('undoMsg').textContent=fn?'Item excluído':msg;$('undoBtn').hidden=!fn;$('undoBtn').onclick=()=>{undoHide();if(fn)fn()};
- $('undoToast').hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(undoHide,ms||9000);
+ $('undoToast').hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(undoHide,ms||5000);
 }
 function undoSnap(){return{records:records.slice(),subjects:subjects.slice(),index:currentIndex,circuits:circuits.slice(),flashcards:flashcards.slice(),caderno:cadernoErradas.slice()}}
 function undoable(label,fn){
@@ -499,12 +499,13 @@ function ceStatsRender(){
  const sel=byMonth.get(S.sel)||{q:0,c:0},sp=sel.q?Math.round(sel.c*100/sel.q):null,sy=Math.floor(S.sel/12),sm=S.sel%12;
  const spc=sp===null?'#94a3b8':sp>=70?'#16a34a':sp>=50?'#d97706':'#dc2626';
  mon.innerHTML='<div class="ce-evo-head"><div><h3>Sua evolução em <b>'+N+' meses</b></h3><div class="ce-evo-range">'+AB[start%12]+' '+Math.floor(start/12)+' – '+AB[S.end%12]+' '+Math.floor(S.end/12)+'</div></div>'
-  +'</div>'
+  +'<div class="ce-evo-nav"><button type="button" class="alt" data-nav="-1" aria-label="Meses anteriores"'+(start>minK?'':' disabled')+'>‹</button><button type="button" class="alt" data-nav="1" aria-label="Próximos meses"'+(S.end<cur?'':' disabled')+'>›</button></div></div>'
   +'<div class="ce-bars" role="group" aria-label="Questões por mês">'+bars+'</div>'
   +'<div class="ce-sum-title">Resumo de '+FULL[sm]+' de '+sy+'</div>'
   +'<div class="ce-sum"><div><span>Resolvidas</span><strong>'+sel.q+'</strong></div><div><span>Certas</span><strong>'+sel.c+'</strong></div><div><span>Erradas</span><strong>'+(sel.q-sel.c)+'</strong></div><div><span>Rendimento</span><strong style="color:'+spc+'">'+(sp===null?'—':sp+'%')+'</strong></div></div>';
  mon.querySelectorAll('.ce-bar').forEach(b=>b.onclick=()=>{S.sel=+b.dataset.k;ceStatsRender()});
- }
+ mon.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{S.end=Math.min(cur,S.end+N*(+b.dataset.nav));S.sel=S.end;ceStatsRender()});
+}
 function ceRender(){
  ceStatsRender();
  const catalog=$('ceCatalogGrid');if(!catalog)return;catalog.innerHTML='';
