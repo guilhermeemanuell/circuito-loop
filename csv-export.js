@@ -23,13 +23,6 @@
       headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E'];
       rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? '')]);
       filename = 'caderno-de-erradas.csv';
-    } else if (kind === 'all') {
-      headers = ['Tipo de dado', 'Data e hora', 'Matéria', 'Tempo de estudo', 'Tempo em segundos', 'Questões respondidas', 'Acertos', 'Erros', 'Aproveitamento (%)', 'Pergunta', 'Resposta', 'Alternativa correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E', 'Anotações'];
-      rows = [];
-      [...(data.records || [])].sort((a,b)=>String(b.date).localeCompare(String(a.date))).forEach(r=>rows.push(['Histórico',r.date,r.subject,duration(r.sec),r.sec,r.q,r.c,Number(r.q)-Number(r.c),r.q?(100*r.c/r.q).toFixed(2):'0.00','','','','','','','','',r.notes]));
-      bySubject(data.flashcards || []).forEach(c=>rows.push(['Flashcard','',''+c.subject,'','','','','','',''+c.question,c.answer,'','','','','','','']));
-      bySubject(data.cadernoErradas || []).forEach(c=>rows.push(['Caderno de Erradas','',''+c.subject,'','','','','','',''+c.question,'',c.correct,...['A','B','C','D','E'].map(k=>c.options?.[k]??''),'']));
-      filename = 'todos-os-dados.csv';
     } else {
       throw new Error('Selecione o conteúdo para exportar.');
     }
@@ -120,5 +113,42 @@
     return { kind, cards, total: rows.length - 1, added: cards.length, duplicates, invalid, newSubjects: [...newSubjects], existingSubjects: [...touched] };
   }
 
-  root.CircuitoCsv = { build, parse, planImport };
+
+  /* ===== Exportar tudo: um .zip com os três CSVs ===== */
+  const crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = crcTable[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function zip(files) {
+    const enc = new TextEncoder(), now = new Date();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const parts = [], central = []; let offset = 0;
+    files.forEach(f => {
+      const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+      lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), name, data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
+      ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), name);
+      offset += 30 + name.length + data.length;
+    });
+    const csize = central.reduce((a, p) => a + p.length, 0), end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, csize, true); end.setUint32(16, offset, true);
+    const all = [...parts, ...central, new Uint8Array(end.buffer)], out = new Uint8Array(all.reduce((a, p) => a + p.length, 0));
+    let o = 0; all.forEach(p => { out.set(p, o); o += p.length; });
+    return out;
+  }
+  function buildAll(data) {
+    const files = []; let count = 0;
+    ['history', 'flashcards', 'errors'].forEach(k => { const r = build(k, data); if (r.count) { files.push({ name: r.filename, data: r.csv }); count += r.count; } });
+    return { filename: 'circuito-loop-todos-os-dados.zip', count, files: files.map(f => f.name), bytes: files.length ? zip(files) : null };
+  }
+
+  root.CircuitoCsv = { build, buildAll, zip, parse, planImport };
 })(globalThis);
