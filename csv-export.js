@@ -150,5 +150,36 @@
     return { filename: 'circuito-loop-todos-os-dados.zip', count, files: files.map(f => f.name), bytes: files.length ? zip(files) : null };
   }
 
-  root.CircuitoCsv = { build, buildAll, zip, parse, planImport };
+  /* ===== Exportar por matéria (um CSV por matéria; um .zip quando há mais de uma) ===== */
+  const subjKey = s => String(s || 'Sem matéria').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR') || 'sem matéria';
+  const itemsOf = (kind, data) => (kind === 'flashcards' ? data.flashcards : data.cadernoErradas) || [];
+  const slug = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sem-materia';
+  function subjects(kind, data) {
+    const m = new Map();
+    itemsOf(kind, data).forEach(c => { const k = subjKey(c.subject); if (!m.has(k)) m.set(k, { key: k, name: String(c.subject || '').trim() || 'Sem matéria', count: 0 }); m.get(k).count++; });
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }
+  // keys: chaves das matérias escolhidas; merge: true = um único CSV com todas as escolhidas
+  function buildBySubject(kind, data, keys, merge) {
+    if (kind !== 'flashcards' && kind !== 'errors') throw new Error('Exportação por matéria só vale para Flashcards e Caderno de Erradas.');
+    const prefix = kind === 'flashcards' ? 'flashcards' : 'caderno-de-erradas';
+    const field = kind === 'flashcards' ? 'flashcards' : 'cadernoErradas';
+    const chosen = subjects(kind, data).filter(s => keys.includes(s.key));
+    const sub = list => build(kind, { ...data, [field]: list });
+    const itemsFor = key => itemsOf(kind, data).filter(c => subjKey(c.subject) === key);
+    if (!chosen.length) return { filename: prefix + '.csv', count: 0, csv: '', files: [], bytes: null };
+    if (merge) {
+      const r = sub(chosen.flatMap(s => itemsFor(s.key)));
+      return chosen.length === 1 ? { ...r, filename: prefix + '-' + slug(chosen[0].name) + '.csv' } : r;
+    }
+    const used = new Map(), files = []; let count = 0;
+    chosen.forEach(s => {
+      const r = sub(itemsFor(s.key)); let base = slug(s.name); const n = (used.get(base) || 0) + 1; used.set(base, n); if (n > 1) base += '-' + n;
+      files.push({ name: prefix + '-' + base + '.csv', data: r.csv, count: r.count }); count += r.count;
+    });
+    if (files.length === 1) return { filename: files[0].name, count, csv: files[0].data };
+    return { filename: prefix + '-por-materia.zip', count, files: files.map(f => f.name), bytes: zip(files.map(f => ({ name: f.name, data: f.data }))) };
+  }
+
+  root.CircuitoCsv = { build, buildAll, buildBySubject, subjects, zip, parse, planImport };
 })(globalThis);

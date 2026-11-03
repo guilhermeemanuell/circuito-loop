@@ -120,8 +120,9 @@ main>header .export-tool svg{flex:none}
 .card-delete-preview{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:640px){#ceCatalogGrid .fc-catalog-tile,#ceCatalogGrid .fc-catalog-tile strong,#ceCatalogGrid .fc-tile-count{text-align:center!important}}
 .export-options{display:grid;gap:12px;margin:18px 0}
+.export-subjects-box{border:1px solid #dce3ec;border-radius:10px;padding:10px 12px}.export-subjects-box #exportToggleAll{justify-self:start;min-height:34px;padding:4px 12px;font-size:14px}#exportSubjectList{display:grid;gap:10px;max-height:220px;overflow:auto;padding:2px}.export-subjects-box small{color:#64748b}
 .export-options label{display:flex;gap:10px;align-items:center;font:inherit;margin:0;cursor:pointer}
-.export-options input[type=radio]{width:20px;min-width:20px;height:20px;min-height:20px!important;margin:0;padding:0;flex:0 0 20px}
+.export-options input[type=checkbox],.export-options input[type=radio]{width:20px;min-width:20px;height:20px;min-height:20px!important;margin:0;padding:0;flex:0 0 20px}
 @media(max-width:640px){main>header>div:first-child{min-width:0;flex:1}#appTitle{overflow-wrap:anywhere;font-size:22px}main>header .tools{gap:4px}main>header .tools>*{padding:0 8px;min-width:44px}}
 </style>
 <style id="text-standard">
@@ -1088,20 +1089,32 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 @media (prefers-reduced-motion:reduce){.fc-flip-inner{transition:none}}
 #fcStudyModal,#ceStudyModal{background:#f3f6fa!important;padding:0!important;align-items:stretch!important;justify-content:stretch!important}
 #fcStudyModal .fc-modal-dialog,#ceStudyModal .fc-modal-dialog{width:100%!important;max-width:none!important;height:100%;max-height:none!important;min-height:0!important;border-radius:0!important;box-shadow:none!important;overflow:auto;padding:max(16px,env(safe-area-inset-top)) max(16px,calc((100vw - 900px)/2)) max(24px,env(safe-area-inset-bottom))!important}
-</style><div id="exportModal" class="fc-modal" hidden><div class="fc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="exportHeading"><h2 id="exportHeading">Exportar CSV</h2><fieldset class="export-options"><legend>O que deseja exportar?</legend><label><input type="radio" name="exportKind" value="history" checked>Histórico de estudo</label><label><input type="radio" name="exportKind" value="flashcards">Flashcards</label><label><input type="radio" name="exportKind" value="errors">Caderno de Erradas</label><label><input type="radio" name="exportKind" value="all">Todos os dados (um .zip com os 3 arquivos CSV)</label></fieldset><p class="note" style="margin:0 0 8px">Imagens do Caderno de Erradas não vão no CSV; use o backup JSON para guardá-las.</p><p id="exportMsg" class="note" role="status"></p><div class="actions"><button id="exportClose" class="alt" type="button">Cancelar</button><button id="exportDownload" type="button">Baixar</button></div></div></div>
+</style><div id="exportModal" class="fc-modal" hidden><div class="fc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="exportHeading"><h2 id="exportHeading">Exportar CSV</h2><fieldset class="export-options"><legend>O que deseja exportar?</legend><label><input type="radio" name="exportKind" value="history" checked>Histórico de estudo</label><label><input type="radio" name="exportKind" value="flashcards">Flashcards</label><label><input type="radio" name="exportKind" value="errors">Caderno de Erradas</label><label><input type="radio" name="exportKind" value="all">Todos os dados (um .zip com os 3 arquivos CSV)</label></fieldset><fieldset id="exportSubjects" class="export-options export-subjects-box" hidden><legend>Matérias</legend><button id="exportToggleAll" class="alt" type="button">Desmarcar todas</button><div id="exportSubjectList"></div><label><input type="checkbox" id="exportMerge">Juntar as matérias escolhidas em um único CSV</label><p class="note" style="margin:0">Uma matéria gera um CSV; várias geram um .zip com um CSV por matéria.</p></fieldset><p class="note" style="margin:0 0 8px">Imagens do Caderno de Erradas não vão no CSV; use o backup JSON para guardá-las.</p><p id="exportMsg" class="note" role="status"></p><div class="actions"><button id="exportClose" class="alt" type="button">Cancelar</button><button id="exportDownload" type="button">Baixar</button></div></div></div>
 <script src="./csv-export.js"></script><script>
 (function(){
 const modal=document.getElementById('exportModal'),msg=document.getElementById('exportMsg'),open=document.getElementById('exportOpen');
 function close(){modal.hidden=true;open.focus()}
-open.onclick=()=>{modal.hidden=false;msg.textContent='';modal.querySelector('input:checked').focus()};
+const kindSel=()=>modal.querySelector('input[name=exportKind]:checked');
+const box=document.getElementById('exportSubjects'),list=document.getElementById('exportSubjectList'),toggle=document.getElementById('exportToggleAll');
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function refreshSubjects(){const k=kindSel()&&kindSel().value;if(k!=='flashcards'&&k!=='errors'){box.hidden=true;return}
+try{const d={flashcards:read('circuitoLoop.flashcards.v1'),cadernoErradas:read('circuitoLoop.cadernoErradas.v1')},subs=CircuitoCsv.subjects(k,d);
+list.innerHTML=subs.length?subs.map(s=>'<label><input type="checkbox" name="exportSubject" value="'+esc(s.key)+'" checked><span>'+esc(s.name)+' <small>('+s.count+')</small></span></label>').join(''):'<p class="note" style="margin:0">Nenhuma matéria cadastrada.</p>';
+box.hidden=false;toggle.hidden=!subs.length;toggle.textContent='Desmarcar todas'}catch(e){box.hidden=true}}
+toggle.onclick=()=>{const cs=[...list.querySelectorAll('input')],all=cs.every(c=>c.checked);cs.forEach(c=>c.checked=!all);toggle.textContent=all?'Marcar todas':'Desmarcar todas'};
+list.addEventListener('change',()=>{toggle.textContent=[...list.querySelectorAll('input')].every(c=>c.checked)?'Desmarcar todas':'Marcar todas'});
+modal.querySelectorAll('input[name=exportKind]').forEach(r=>r.addEventListener('change',()=>{msg.textContent='';refreshSubjects()}));
+open.onclick=()=>{modal.hidden=false;msg.textContent='';refreshSubjects();kindSel().focus()};
 document.getElementById('exportClose').onclick=close;
 modal.addEventListener('click',e=>{if(e.target===modal)close()});
 modal.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 function read(key){const data=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(data))throw new Error('Não foi possível ler os dados salvos.');return data}
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 document.getElementById('exportDownload').onclick=async()=>{
-try{const selected=modal.querySelector('input:checked');if(!selected)return;
-const exportData={records:read('circuitoLoop.v1'),flashcards:read('circuitoLoop.flashcards.v1'),cadernoErradas:read('circuitoLoop.cadernoErradas.v1')};const result=selected.value==='all'?CircuitoCsv.buildAll(exportData):CircuitoCsv.build(selected.value,exportData);
+try{const selected=kindSel();if(!selected)return;
+const exportData={records:read('circuitoLoop.v1'),flashcards:read('circuitoLoop.flashcards.v1'),cadernoErradas:read('circuitoLoop.cadernoErradas.v1')};let result;if(selected.value==='all')result=CircuitoCsv.buildAll(exportData);
+else if(selected.value==='flashcards'||selected.value==='errors'){const keys=[...list.querySelectorAll('input[name=exportSubject]:checked')].map(i=>i.value);if(!keys.length){msg.textContent='Selecione ao menos uma matéria.';return}result=CircuitoCsv.buildBySubject(selected.value,exportData,keys,document.getElementById('exportMerge').checked)}
+else result=CircuitoCsv.build(selected.value,exportData);
 if(!result.count){msg.textContent=selected.value==='all'?'Não há nenhum dado cadastrado para exportar.':'Nenhum dado cadastrado nesta categoria.';return}
 const blob=result.bytes?new Blob([result.bytes],{type:'application/zip'}):new Blob([result.csv],{type:'text/csv;charset=utf-8'}),file=new File([blob],result.filename,{type:blob.type});
 if(matchMedia('(pointer:coarse)').matches&&navigator.canShare?.({files:[file]})){
