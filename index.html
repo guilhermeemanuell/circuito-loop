@@ -258,21 +258,7 @@ let fcIndex=0,fcRevealed=false,fcEditId=null,fcActiveSubject="",fcQueue=[],fcRev
 try{flashcards=JSON.parse(localStorage.getItem(FCKEY)||'[]');if(!Array.isArray(flashcards))flashcards=[]}catch(e){flashcards=[]}
 const fcSave=()=>{localStorage.setItem(FCKEY,JSON.stringify(flashcards));fcRender()};
 const fcEsc=x=>String(x??'');
-/* Todas as páginas têm, no mínimo, a altura da página do Caderno de Erradas (evita o "pulo" do rodapé ao trocar de aba).
-   Só o tamanho da página muda: o espaço extra fica entre o último bloco e o rodapé, sem esticar nenhuma seção.
-   Se o conteúdo de uma página for maior, ela cresce normalmente. */
-function equalizePageHeights(){
- const main=document.querySelector('main'),foot=$('syncFooter'),secs=[...document.querySelectorAll('main>section.card')];if(!main||!foot||!secs.length)return;
- secs.forEach(el=>el.style.minHeight='');foot.style.paddingTop='';
- const errs=$('errorsPage');if(!errs)return;
- const base=parseFloat(getComputedStyle(foot).paddingTop)||0,now=main.getBoundingClientRect().height;
- const was=secs.map(el=>el.hidden);secs.forEach(el=>el.hidden=el!==errs);
- const target=main.getBoundingClientRect().height;
- secs.forEach((el,i)=>el.hidden=was[i]);
- if(target>now)foot.style.paddingTop=Math.round(base+target-now)+'px';
-}
-let eqTimer=0;window.addEventListener('resize',()=>{clearTimeout(eqTimer);eqTimer=setTimeout(equalizePageHeights,120)});window.addEventListener('load',equalizePageHeights);
-function showAppPage(page){document.querySelectorAll('main>section.card').forEach(el=>{if(el.id==='flashPage')el.hidden=page!=='flash';else if(el.id==='errorsPage')el.hidden=page!=='errors';else el.hidden=page!=='study'});$('studyTab').className=page==='study'?'':'alt';$('flashTab').className=page==='flash'?'':'alt';$('errorsTab').className=page==='errors'?'':'alt';$('appTitle').textContent=page==='flash'?'🃏 Flashcards':page==='errors'?'📕 Caderno de Erradas':'📚 Circuito Loop';if(page==='flash')fcRender();equalizePageHeights()}
+function showAppPage(page){document.querySelectorAll('main>section.card').forEach(el=>{if(el.id==='flashPage')el.hidden=page!=='flash';else if(el.id==='errorsPage')el.hidden=page!=='errors';else el.hidden=page!=='study'});$('studyTab').className=page==='study'?'':'alt';$('flashTab').className=page==='flash'?'':'alt';$('errorsTab').className=page==='errors'?'':'alt';$('appTitle').textContent=page==='flash'?'🃏 Flashcards':page==='errors'?'📕 Caderno de Erradas':'📚 Circuito Loop';if(page==='flash')fcRender()}
 function fcShowPage(show){showAppPage(show?'flash':'study')}
 $('studyTab').onclick=()=>showAppPage('study');$('flashTab').onclick=()=>showAppPage('flash');$('errorsTab').onclick=()=>showAppPage('errors');
 function fcFiltered(){const term=$('fcSearch').value.trim().toLocaleLowerCase('pt-BR');return flashcards.filter(c=>(!fcActiveSubject||fcActiveSubject===FC_ALL||c.subject===fcActiveSubject)&&(!term||(c.question+' '+c.answer+' '+c.subject).toLocaleLowerCase('pt-BR').includes(term))).sort((a,b)=>(a.due||0)-(b.due||0))}
