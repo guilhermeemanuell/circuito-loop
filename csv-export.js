@@ -16,8 +16,8 @@
       rows = [...data.records].sort((a, b) => String(b.date).localeCompare(String(a.date))).map(r => [r.date, r.subject, duration(r.sec), r.sec, r.q, r.c, Number(r.q) - Number(r.c), r.q ? (100 * r.c / r.q).toFixed(2) : '0.00', r.notes]);
       filename = 'historico-de-estudo.csv';
     } else if (kind === 'flashcards') {
-      headers = ['Matéria', 'Pergunta', 'Resposta'];
-      rows = bySubject(data.flashcards).map(c => [c.subject, c.question, c.answer]);
+      headers = ['Matéria', 'Pergunta', 'Resposta', 'Categoria'];
+      rows = bySubject(data.flashcards).map(c => [c.subject, c.question, c.answer, c.category || '']);
       filename = 'flashcards.csv';
     } else if (kind === 'errors') {
       headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E'];
@@ -74,7 +74,7 @@
     else if (col('resposta') >= 0) kind = 'flashcards';
     else throw new Error('Não reconheci o formato do CSV. Flashcards precisam das colunas Matéria, Pergunta e Resposta; Caderno de Erradas, de Matéria, Pergunta, Alternativa correta e Alternativa A a E.');
     if (iS < 0 || iQ < 0) throw new Error('O CSV precisa ter as colunas “Matéria” e “Pergunta”.');
-    const iA = col('resposta'), iC = col('alternativa correta'), iR = col('resposta correta');
+    const iA = col('resposta'), iC = col('alternativa correta'), iR = col('resposta correta'), iCat = col('categoria');
     const iOpt = ['a', 'b', 'c', 'd', 'e'].map(l => col('alternativa ' + l));
     if (kind === 'errors' && iOpt.some(i => i < 0)) throw new Error('Este CSV de Caderno de Erradas não tem as colunas Alternativa A a E, então não dá para recriar as questões. Exporte o CSV novamente por esta versão do app (a exportação agora inclui as cinco alternativas).');
 
@@ -92,7 +92,7 @@
       if (kind === 'flashcards') {
         const answer = v(iA);
         if (!answer) { invalid.push(line); return; }
-        item = { subject, question, answer };
+        item = { subject, question, answer, category: v(iCat) };
       } else {
         const correct = v(iC).toUpperCase(), options = {};
         ['A', 'B', 'C', 'D', 'E'].forEach((l, n) => { options[l] = v(iOpt[n]); });
