@@ -82,8 +82,14 @@
     const canon = new Map();
     [...(existing.subjects || []), ...list.map(c => c.subject)].forEach(s => { const t = String(s || '').trim(); if (t && !canon.has(norm(t))) canon.set(norm(t), t); });
     const known = new Set(canon.keys());
-    const seen = new Set(list.map(c => norm(c.subject) + '\u0000' + norm(c.question)));
-    const cards = [], invalid = [], newSubjects = new Set(), touched = new Set();
+    // assinatura do conteúdo, para dizer se um repetido é idêntico ou tem resposta/alternativas diferentes
+    const sigOf = x => kind === 'flashcards'
+      ? norm(x.answer)
+      : String(x.correct || '') + '|' + ['A', 'B', 'C', 'D', 'E'].map(l => norm((x.options || {})[l])).join('|');
+    // chave = matéria + pergunta (sem acento/maiúsculas/espaços extras); guarda de onde veio o primeiro item com essa chave
+    const seen = new Map();
+    list.forEach(x => seen.set(norm(x.subject) + '\u0000' + norm(x.question), { origin: 'app', sig: sigOf(x), answer: x.answer || '' }));
+    const cards = [], invalid = [], newSubjects = new Set(), touched = new Set(), dupItems = [];
     let duplicates = 0;
     rows.slice(1).forEach((r, k) => {
       const line = k + 2, v = i => i < 0 ? '' : clean(r[i]);
@@ -103,14 +109,20 @@
       }
       const key = norm(subject);
       const dupKey = key + '\u0000' + norm(question);
-      if (seen.has(dupKey)) { duplicates++; return; }
-      seen.add(dupKey);
+      const prev = seen.get(dupKey);
+      if (prev) {
+        duplicates++;
+        item.subject = canon.get(key) || subject;
+        dupItems.push({ line, subject: item.subject, question, reason: prev.origin, firstLine: prev.line || 0, differs: prev.sig !== sigOf(item), answer: item.answer || '', other: prev.answer || '', item });
+        return;
+      }
+      seen.set(dupKey, { origin: 'file', line, sig: sigOf(item), answer: item.answer || '' });
       if (!canon.has(key)) { canon.set(key, subject); newSubjects.add(subject); }
       else if (known.has(key)) touched.add(canon.get(key));
       item.subject = canon.get(key);
       cards.push(item);
     });
-    return { kind, cards, total: rows.length - 1, added: cards.length, duplicates, invalid, newSubjects: [...newSubjects], existingSubjects: [...touched] };
+    return { kind, cards, dupItems, total: rows.length - 1, added: cards.length, duplicates, invalid, newSubjects: [...newSubjects], existingSubjects: [...touched] };
   }
 
 
