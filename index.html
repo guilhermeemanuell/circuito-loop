@@ -301,7 +301,7 @@ function richHtml(text){
  const re=/\\([*_\\])|\*\*\*(\S(?:[\s\S]*?\S)?)\*\*\*|\*\*(\S(?:[\s\S]*?\S)?)\*\*|__(\S(?:[\s\S]*?\S)?)__|\*(\S(?:[^*\n]*?\S)?)\*/g;
  let t=String(text==null?'':text);
  // Tags HTML simples aceitas nos CSVs são convertidas para a marcação já suportada.
- t=t.replace(/<(\\/?)\\s*(b|strong|i|em|u)\\s*>/gi,(tag,close,name)=>{
+ t=t.replace(/<(\/?)\s*(b|strong|i|em|u)\s*>/gi,(tag,close,name)=>{
    const n=name.toLowerCase(),mark=(n==='b'||n==='strong')?'**':(n==='i'||n==='em')?'*':'__';
    return close?mark:mark;
  });
