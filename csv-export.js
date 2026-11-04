@@ -20,8 +20,8 @@
       rows = bySubject(data.flashcards).map(c => [c.subject, c.question, c.answer, c.category || '']);
       filename = 'flashcards.csv';
     } else if (kind === 'errors') {
-      headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E'];
-      rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? '')]);
+      headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E', 'Imagem'];
+      rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? ''), c.image ? c.image + '.jpg' : '']);
       filename = 'caderno-de-erradas.csv';
     } else {
       throw new Error('Selecione o conteúdo para exportar.');
@@ -74,7 +74,7 @@
     else if (col('resposta') >= 0) kind = 'flashcards';
     else throw new Error('Não reconheci o formato do CSV. Flashcards precisam das colunas Matéria, Pergunta e Resposta; Caderno de Erradas, de Matéria, Pergunta, Alternativa correta e Alternativa A a E.');
     if (iS < 0 || iQ < 0) throw new Error('O CSV precisa ter as colunas “Matéria” e “Pergunta”.');
-    const iA = col('resposta'), iC = col('alternativa correta'), iR = col('resposta correta'), iCat = col('categoria');
+    const iA = col('resposta'), iC = col('alternativa correta'), iR = col('resposta correta'), iCat = col('categoria'), iImg = col('imagem');
     const iOpt = ['a', 'b', 'c', 'd', 'e'].map(l => col('alternativa ' + l));
     if (kind === 'errors' && iOpt.some(i => i < 0)) throw new Error('Este CSV de Caderno de Erradas não tem as colunas Alternativa A a E, então não dá para recriar as questões. Exporte o CSV novamente por esta versão do app (a exportação agora inclui as cinco alternativas).');
 
@@ -107,7 +107,7 @@
         if (!/^[A-E]$/.test(correct)) { invalid.push(line); return; }
         if (!options[correct] && iR >= 0) options[correct] = v(iR);
         if (Object.values(options).some(x => !x)) { invalid.push(line); return; }
-        item = { subject, question, options, correct };
+        item = { subject, question, options, correct, ...(iImg >= 0 && v(iImg) ? { imageName: v(iImg).split(/[\\/]/).pop() } : {}) };
       }
       const key = norm(subject);
       const dupKey = fullKey(item, subject);
