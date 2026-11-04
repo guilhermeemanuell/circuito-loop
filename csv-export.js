@@ -88,7 +88,9 @@
       : String(x.correct || '') + '|' + ['A', 'B', 'C', 'D', 'E'].map(l => norm((x.options || {})[l])).join('|');
     // chave = matéria + pergunta (sem acento/maiúsculas/espaços extras); guarda de onde veio o primeiro item com essa chave
     const seen = new Map();
-    list.forEach(x => seen.set(norm(x.subject) + '\u0000' + norm(x.question), { origin: 'app', sig: sigOf(x), answer: x.answer || '' }));
+    // repetido = mesma matéria, pergunta, resposta e categoria (Caderno de Erradas: matéria, pergunta e alternativas)
+    const fullKey = (x, subj) => [norm(subj), norm(x.question), sigOf(x), kind === 'flashcards' ? norm(x.category) : ''].join('\u0000');
+    list.forEach(x => seen.set(fullKey(x, x.subject), { origin: 'app', sig: sigOf(x), answer: x.answer || '' }));
     const cards = [], invalid = [], newSubjects = new Set(), touched = new Set(), dupItems = [];
     let duplicates = 0;
     rows.slice(1).forEach((r, k) => {
@@ -108,12 +110,12 @@
         item = { subject, question, options, correct };
       }
       const key = norm(subject);
-      const dupKey = key + '\u0000' + norm(question);
+      const dupKey = fullKey(item, subject);
       const prev = seen.get(dupKey);
       if (prev) {
         duplicates++;
         item.subject = canon.get(key) || subject;
-        dupItems.push({ line, subject: item.subject, question, reason: prev.origin, firstLine: prev.line || 0, differs: prev.sig !== sigOf(item), answer: item.answer || '', other: prev.answer || '', item });
+        dupItems.push({ line, subject: item.subject, question, reason: prev.origin, firstLine: prev.line || 0, differs: false, answer: item.answer || '', other: prev.answer || '', item });
         return;
       }
       seen.set(dupKey, { origin: 'file', line, sig: sigOf(item), answer: item.answer || '' });
