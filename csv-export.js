@@ -107,7 +107,8 @@
         if (!/^[A-E]$/.test(correct)) { invalid.push(line); return; }
         if (!options[correct] && iR >= 0) options[correct] = v(iR);
         if (Object.values(options).some(x => !x)) { invalid.push(line); return; }
-        item = { subject, question, options, correct, ...(iImg >= 0 && v(iImg) ? { imageName: v(iImg).split(/[\\/]/).pop() } : {}), ...(iComment >= 0 && v(iComment) ? { comment: v(iComment) } : {}) };
+        const imageNames = [...new Set([question, ...Object.values(options)].flatMap(text => [...String(text).matchAll(/\{\{imagem:([^{}]+)\}\}/gi)].map(m => m[1].trim())).filter(Boolean))];
+        item = { subject, question, options, correct, ...(iImg >= 0 && v(iImg) ? { imageName: v(iImg).split(/[\\/]/).pop() } : {}), ...(imageNames.length ? { imageNames } : {}), ...(iComment >= 0 && v(iComment) ? { comment: v(iComment) } : {}) };
       }
       const key = norm(subject);
       const dupKey = fullKey(item, subject);
