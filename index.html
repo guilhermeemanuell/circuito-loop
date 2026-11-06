@@ -553,9 +553,18 @@ function richHtml(text){
  return (out+richEsc(t.slice(last))).replace(/\n/g,'<br>').replaceAll(literalStar,'*');
 }
 function richPlain(text){const d=document.createElement('div');d.innerHTML=richHtml(text).replace(/<br>/g,' ');return d.textContent}
+const richUndoState=new WeakMap();
+let richActivePreview='';
+function richState(ta){let st=richUndoState.get(ta);if(!st){st={last:ta.value,stack:[]};richUndoState.set(ta,st)}return st}
+function richCommit(ta,before){
+ const st=richState(ta);
+ if(before!==ta.value){st.stack.push(before);if(st.stack.length>100)st.stack.shift()}
+ st.last=ta.value;
+}
 function richToggle(ta,mark){
  if(!ta)return;
- let s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;const ch=mark[0],L=mark.length;
+ const before=ta.value;
+ let s=ta.selectionStart,e=ta.selectionEnd,v=before;const ch=mark[0],L=mark.length;
  const run=(from,dir)=>{let n=0;while((dir<0?v[from-1-n]:v[from+n])===ch)n++;return n};
  if(s===e){v=v.slice(0,s)+mark+mark+v.slice(e);s=e=s+L}
  else{
@@ -568,33 +577,37 @@ function richToggle(ta,mark){
    else{v=v.slice(0,s)+lead+mark+core+mark+trail+v.slice(e);s=s+lead.length+L;e=s+core.length}
   }
  }
- ta.value=v;ta.focus();ta.setSelectionRange(s,e);ta.dispatchEvent(new Event('input',{bubbles:true}));
+ ta.value=v;ta.focus();ta.setSelectionRange(s,e);richCommit(ta,before);ta.dispatchEvent(new Event('input',{bubbles:true}));
 }
 function richLiteralStar(ta){
  if(!ta)return;
- const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value,selected=v.slice(s,e);
- const wrapped='\\*'+(selected||'')+'\\*';
- ta.value=v.slice(0,s)+wrapped+v.slice(e);ta.focus();
- const a=s+2,b=selected?s+2+selected.length:a;
- ta.setSelectionRange(a,b);ta.dispatchEvent(new Event('input',{bubbles:true}));
+ const before=ta.value,s=ta.selectionStart,e=ta.selectionEnd,selected=before.slice(s,e);
+ const insert=selected?'\\*'+selected+'\\*':'\\*';
+ ta.value=before.slice(0,s)+insert+before.slice(e);ta.focus();
+ const a=selected?s+2+selected.length:s+2;
+ ta.setSelectionRange(a,a);richCommit(ta,before);ta.dispatchEvent(new Event('input',{bubbles:true}));
 }
 function richRefresh(id){
  const ta=$(id),pv=document.querySelector('.rich-preview[data-for="'+id+'"]');if(!ta||!pv)return;
- const h=richHtml(ta.value),has=String(ta.value||'').length>0;pv.hidden=!has;if(has)pv.innerHTML=h;else pv.innerHTML='';
+ if(richActivePreview!==id){pv.hidden=true;return}
+ pv.hidden=false;pv.innerHTML=richHtml(ta.value);
 }
-const richIds=['fcQuestion','fcAnswer','ceQuestion','ceOptionA','ceOptionB','ceOptionC','ceOptionD','ceOptionE','ceComment'];
 function richRefreshAll(){richIds.forEach(richRefresh)}
-const richUndoState=new WeakMap();
+const richIds=['fcQuestion','fcAnswer','ceQuestion','ceOptionA','ceOptionB','ceOptionC','ceOptionD','ceOptionE','ceComment'];
+function richHidePreviews(){richActivePreview='';richRefreshAll()}
+function richActivatePreview(id){
+ const ta=$(id);if(!ta||!richIds.includes(id))return;
+ richActivePreview=id;richRefreshAll();
+}
 function richTrack(ta){
  if(!ta)return;
- const state=richUndoState.get(ta)||{last:ta.value,stack:[]};
+ const state=richState(ta);
  if(state.last!==ta.value){state.stack.push(state.last);if(state.stack.length>100)state.stack.shift();state.last=ta.value;}
- richUndoState.set(ta,state);
 }
 function richUndo(ta){
  if(!ta)return;
- const state=richUndoState.get(ta);
- if(!state||!state.stack.length)return;
+ const state=richState(ta);
+ if(!state.stack.length)return;
  ta.value=state.stack.pop();state.last=ta.value;ta.focus();
  ta.setSelectionRange(ta.value.length,ta.value.length);
  ta.dispatchEvent(new Event('input',{bubbles:true}));
@@ -607,6 +620,7 @@ document.querySelectorAll('.rich-bar').forEach(bar=>{
   b.addEventListener('mousedown',e=>e.preventDefault());
   b.onclick=()=>b.dataset.undoRich?richUndo(ta):(b.dataset.literalStar?richLiteralStar(ta):richToggle(ta,b.dataset.mark));
  });
+ ta.addEventListener('focus',()=>{const st=richState(ta);st.last=ta.value;richActivatePreview(ta.id)});
  ta.addEventListener('input',()=>{richTrack(ta);richRefresh(bar.dataset.for)});
  ta.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&String(e.key).toLowerCase()==='z'){
@@ -616,9 +630,17 @@ document.querySelectorAll('.rich-bar').forEach(bar=>{
   const mark={b:'**',i:'*',u:'__',x:'~~'}[String(e.key).toLowerCase()];
   if(mark){e.preventDefault();richToggle(ta,mark)}
  });
- richRefresh(bar.dataset.for);
 });
-['ceModal','fcModal'].forEach(id=>new MutationObserver(richRefreshAll).observe($(id),{attributes:true,attributeFilter:['hidden']}));
+['ceModal','fcModal'].forEach(id=>{
+ const modal=$(id);
+ new MutationObserver(()=>{if(!modal.hidden)richHidePreviews();else richHidePreviews()}).observe(modal,{attributes:true,attributeFilter:['hidden']});
+ modal.addEventListener('focusin',e=>{
+  const target=e.target;
+  if(target&&richIds.includes(target.id))return;
+  if(target&&target.matches('input,textarea,select,button'))richHidePreviews();
+ });
+ modal.addEventListener('click',e=>{const target=e.target;if(target&&richIds.includes(target.id))richActivatePreview(target.id)});
+});
 const studyScrollLock=()=>document.documentElement.classList.toggle('study-open',!$('fcStudyModal').hidden||!$('ceStudyModal').hidden);['fcStudyModal','ceStudyModal'].forEach(id=>new MutationObserver(studyScrollLock).observe($(id),{attributes:true,attributeFilter:['hidden']}));
 
 /* ---------- Desfazer exclusões ---------- */
