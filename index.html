@@ -31,7 +31,17 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 /* Painel de desempenho — visualização moderna */
 #dashboardPage{border:1px solid #dbe4ef;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
 #dashboardPage .dashboard-intro{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-#dashboardPage .dashboard-intro p{margin:5px 0 0}
+#dashboardPage .dashboard-intro p{margin:5px 0 0}#dashboardPage .dashboard-intro>div{min-width:0;flex:1 1 auto}
+#dashboardPage .dashboard-refresh{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;white-space:nowrap;min-width:max-content;padding:10px 14px}
+#dashboardPage .dashboard-refresh .refresh-icon{font-size:18px;line-height:1}
+@media(max-width:640px){
+ #dashboardPage .dashboard-intro{flex-wrap:nowrap;align-items:center;gap:8px}
+ #dashboardPage .dashboard-intro h2{font-size:18px;line-height:1.25}
+ #dashboardPage .dashboard-intro p{font-size:12px;line-height:1.35}
+ #dashboardPage .dashboard-refresh{width:44px;min-width:44px;height:44px;padding:0;border-radius:12px}
+ #dashboardPage .dashboard-refresh .refresh-label{display:none}
+}
+
 #dashboardSummary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 #dashboardSummary .stat{position:relative;overflow:hidden;border:1px solid #e2eaf4;background:#fff;border-radius:14px;padding:15px;min-width:0;box-shadow:0 3px 12px #1e3a5f08}
 #dashboardSummary .stat b{font-size:clamp(20px,3vw,27px);line-height:1.2;color:#17365f;overflow-wrap:anywhere}
@@ -85,7 +95,7 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 <section class="card" id="dashboardPage" hidden>
   <div class="dashboard-intro">
     <div><h2 style="margin:0">Painel de desempenho</h2><p class="muted">Sua evolução de estudos em um só lugar.</p></div>
-    <button class="alt" id="dashboardRefresh" type="button">↻ Atualizar</button>
+    <button class="alt dashboard-refresh" id="dashboardRefresh" type="button" aria-label="Atualizar painel" title="Atualizar painel"><span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">Atualizar</span></button>
   </div>
   <div class="stats" id="dashboardSummary"></div>
   <div class="dashboard-panels">
@@ -169,7 +179,8 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
   nav.fc-row button::after{font-size:13px;font-weight:700}
   #studyTab::before{content:"📚"} #studyTab::after{content:"Circuito Loop"}
   #flashTab::before{content:"🃏"} #flashTab::after{content:"Flashcards"}
-  #errorsTab::before{content:"📕"} #errorsTab::after{content:"Erradas"}\n  #dashboardTab::before{content:"📊"} #dashboardTab::after{content:"Desempenho"}
+  #errorsTab::before{content:"📕"} #errorsTab::after{content:"Erradas"}
+  #dashboardTab::before{content:"📊"} #dashboardTab::after{content:"Desempenho"}
   .card{padding:16px;margin:12px 0;border-radius:16px}
   h2{font-size:19px}
   .muted{font-size:15px;color:#526173}
