@@ -52,6 +52,23 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 #dashboardSubjects .subject-track{height:9px;background:#edf2f8;border-radius:99px;overflow:hidden;margin-top:7px}
 #dashboardSubjects .subject-fill{height:100%;background:linear-gradient(90deg,#2459a6,#5c91d0);border-radius:99px}
 #dashboardPage .dashboard-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+#dashboardPage .dashboard-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border:1px solid #e2eaf4;border-radius:12px;background:#f8fafc;font-size:12px;color:#526173}
+#dashboardPage .dashboard-legend span{display:inline-flex;align-items:center;gap:6px}
+#dashboardPage .dashboard-legend small{flex-basis:100%;color:#64748b}
+#dashboardPage .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+#dashboardPage .legend-dot.low{background:#b42332}#dashboardPage .legend-dot.mid{background:#d99b00}#dashboardPage .legend-dot.high{background:#16834a}
+#dashboardPage .performance-pill{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+#dashboardPage .performance-pill.low{background:#fde8e9;color:#a51d2d}
+#dashboardPage .performance-pill.mid{background:#fff4cc;color:#805b00}
+#dashboardPage .performance-pill.high{background:#dcf5e7;color:#12643a}
+#dashboardPage .performance-pill.none{background:#edf2f7;color:#64748b}
+#dashboardPage .dashboard-filter-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+#dashboardPage .dashboard-filter-row strong{color:#26364a}
+#dashboardPage .dashboard-filter-track{height:8px;background:#edf2f8;border-radius:99px;overflow:hidden;margin-top:5px}
+#dashboardPage .dashboard-filter-fill{height:100%;border-radius:99px}
+#dashboardPage .dashboard-filter-fill.low{background:#b42332}#dashboardPage .dashboard-filter-fill.mid{background:#d99b00}#dashboardPage .dashboard-filter-fill.high{background:#16834a}
+#dashboardPage .dashboard-history-item{padding:9px 0;border-bottom:1px solid #edf1f6;font-size:12px;color:#64748b}
+#dashboardPage .dashboard-history-item:last-child{border-bottom:0}
 #dashboardPage .dashboard-metric{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf1f6}
 #dashboardPage .dashboard-metric:last-child{border-bottom:0}
 #dashboardPage .dashboard-metric strong{font-size:18px;color:#17365f}
@@ -79,6 +96,28 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
     <div class="dashboard-panel"><h3>Materiais cadastrados</h3><div id="dashboardMaterials"></div></div>
     <div class="dashboard-panel"><h3>Indicadores gerais</h3><div id="dashboardInsights"></div></div>
   </div>
+  <div class="dashboard-bottom">
+    <div class="dashboard-panel">
+      <h3>Caderno de Erradas</h3>
+      <div id="dashboardErrorsSummary"></div>
+      <label for="dashboardErrorsFilter" style="display:block;margin:12px 0 6px">Filtrar matérias por desempenho</label>
+      <select id="dashboardErrorsFilter" style="width:100%;padding:9px;border:1px solid #d8e1ed;border-radius:9px;background:#fff">
+        <option value="all">Todas as matérias</option>
+        <option value="low">Abaixo de 75% · vermelho</option>
+        <option value="mid">76% a 89% · amarelo</option>
+        <option value="high">90% ou mais · verde</option>
+        <option value="none">Ainda sem tentativas registradas</option>
+      </select>
+      <div id="dashboardErrorsSubjects" style="display:grid;gap:12px;margin-top:12px"></div>
+    </div>
+    <div class="dashboard-panel">
+      <h3>Flashcards</h3>
+      <div id="dashboardFlashSummary"></div>
+      <h3 style="margin-top:18px">Histórico de revisões</h3>
+      <div id="dashboardFlashHistory"></div>
+    </div>
+  </div>
+  <div class="dashboard-legend"><strong>Legenda de desempenho:</strong><span><i class="legend-dot low"></i> Abaixo de 75% — vermelho</span><span><i class="legend-dot mid"></i> 76% a 89% — amarelo</span><span><i class="legend-dot high"></i> 90% ou mais — verde</span><small>O intervalo de 75% fica na faixa amarela para não deixar nenhum percentual sem classificação.</small></div>
   <p class="note" style="margin:14px 2px 0">Os indicadores consideram as sessões registradas no Histórico, os cartões cadastrados em Flashcards e as questões cadastradas no Caderno de Erradas. Sessões ainda não salvas não entram nos cálculos.</p>
 </section>
 <section class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 id="circuitTitle" style="margin:0">Matérias do circuito</h2><button id="toggleCircuit" class="alt" type="button">Minimizar</button></div><div id="circuitBody"><p class="muted">Cadastre matérias na ordem desejada. Ao salvar cada sessão, o sistema avança para a próxima. As alterações são salvas automaticamente neste navegador.</p><div class="grid circuit-config-grid"><div><label>Circuitos salvos</label><select id="circuitSelect" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit"><option value="">Selecione um circuito salvo</option></select></div><div><label>Nome do circuito</label><input id="circuitName" placeholder="Ex.: Ciclo para prova X"></div><div style="display:flex;align-items:center;padding-top:20px;box-sizing:border-box;gap:8px;flex-wrap:wrap"><button id="saveCircuit">Salvar circuito</button><button id="deleteCircuit" class="red" type="button">Excluir salvo</button></div></div><div class="grid subject-entry-grid" style="margin-top:20px"><div><label>Adicionar matéria</label><input id="newSubject" placeholder="Ex.: Português"></div><div style="display:flex;align-items:center;padding-top:20px;box-sizing:border-box;gap:8px;flex-wrap:wrap"><button id="addSubject">Adicionar ao circuito</button><button id="clearSubjects" class="red" type="button">Excluir todas</button></div><div><label>Matérias já cadastradas</label><select id="knownSubject" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit"><option value="">Selecione uma matéria</option></select></div><div style="display:flex;align-items:center;padding-top:20px;box-sizing:border-box"><button id="addKnownSubject" class="alt" type="button">Adicionar selecionada</button></div></div><div id="subjectList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><p class="note" id="loopStatus">Cadastre matérias para começar.</p></div></section><section class="card"><h2>Estudo do dia</h2><p><strong>Matéria a ser estudada:</strong> <span id="subject" class="muted">Nenhuma matéria cadastrada</span></p><div class="grid session-fields"><div><label>Questões realizadas</label><input id="q" type="number" min="0" step="1" value="0"></div><div><label>Acertos</label><input id="c" type="number" min="0" step="1" value="0"></div><div><label>Anotações</label><button id="openNotes" class="alt" type="button">Escrever anotações</button><span id="notesState" class="note" style="margin-left:8px">Nenhuma anotação</span></div></div><div class="center"><div class="clock" id="clock">00:00:00</div><p class="muted" id="status">Pronto para começar</p><div class="actions"><button id="start">Iniciar</button><button id="pause" class="alt" disabled>Pausar</button><button id="resume" class="alt" disabled>Continuar</button><button id="stop" class="red" disabled>Parar e salvar</button><button id="discard" class="alt" disabled>Descartar</button></div></div><p class="note"> <span style="display:block;text-align:center;">O tempo continua correto mesmo se a aba ficar em segundo plano. Ao parar, a sessão é salva no navegador.</span></p></section>
@@ -122,7 +161,7 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
   main>header .tools>*{flex:0 0 auto;font-size:0;padding:0 12px;min-height:44px;min-width:48px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px}
   #syncOpen .sync-ico{font-size:24px;line-height:1}
   #syncOpen .sync-label{display:none}
-  nav.fc-row{position:fixed;left:0;right:0;bottom:0;z-index:25;margin:0!important;display:flex!important;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dce3ec;box-shadow:0 -6px 20px #0f172a14;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  nav.fc-row{position:fixed;left:0;right:0;bottom:0;z-index:25;margin:0!important;display:flex!important;flex-wrap:nowrap!important;white-space:nowrap;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dce3ec;box-shadow:0 -6px 20px #0f172a14;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
   nav.fc-row button{min-width:0!important;width:calc((100vw - 48px)/3);flex:0 0 calc((100vw - 48px)/3);box-sizing:border-box;margin:0;font-size:0;min-height:52px;border-radius:12px;padding:6px 4px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
   nav.fc-row button::before{font-size:20px;line-height:1}
   nav.fc-row button::after{font-size:13px;font-weight:700}
@@ -348,6 +387,39 @@ function renderDashboard(){
   const avgSec=sessions.length?Math.round(totalSec/sessions.length):0;
   const last=sessions.map(r=>new Date(r.date)).filter(d=>!isNaN(d)).sort((a,b)=>b-a)[0];
   $('dashboardInsights').innerHTML=`<div class="dashboard-metric"><strong>${totalQ-totalC}</strong><span>Respostas incorretas</span></div><div class="dashboard-metric"><strong>${duration(avgSec)}</strong><span>Tempo médio por sessão</span></div><div class="dashboard-metric"><strong>${last?last.toLocaleDateString('pt-BR'):'—'}</strong><span>Último registro</span></div>`;
+
+  // Caderno de Erradas: métricas por questão, alimentadas a cada resposta a partir desta versão.
+  const attempted=questions.filter(q=>num(q.attempts)>0);
+  const repeated=questions.filter(q=>num(q.wrongAttempts)>=2);
+  const errAttempts=attempted.reduce((s,q)=>s+num(q.attempts),0);
+  const errCorrect=attempted.reduce((s,q)=>s+num(q.correctAttempts),0);
+  const errPct=errAttempts?Math.round(errCorrect/errAttempts*100):0;
+  $('dashboardErrorsSummary').innerHTML=
+    `<div class="dashboard-metric"><strong>${questions.length}</strong><span>Questões cadastradas</span></div>`+
+    `<div class="dashboard-metric"><strong>${attempted.length}</strong><span>Questões já respondidas</span></div>`+
+    `<div class="dashboard-metric"><strong>${repeated.length}</strong><span>Questões erradas 2 vezes ou mais</span></div>`+
+    `<div class="dashboard-metric"><strong>${errAttempts?errPct+'%':'—'}</strong><span>Aproveitamento nas tentativas registradas</span></div>`;
+  const errBySubject=new Map();
+  questions.forEach(q=>{const name=String(q.subject||'Matéria sem nome');const v=errBySubject.get(name)||{attempts:0,correct:0,wrong:0,questions:0,repeated:0};v.questions++;v.attempts+=num(q.attempts);v.correct+=num(q.correctAttempts);v.wrong+=num(q.wrongAttempts);if(num(q.wrongAttempts)>=2)v.repeated++;errBySubject.set(name,v)});
+  const classify=p=>p<75?'low':p<90?'mid':'high';
+  const renderErrorSubjects=()=>{
+    const filter=$('dashboardErrorsFilter').value;
+    const rows=[...errBySubject.entries()].map(([name,v])=>({name,...v,pct:v.attempts?Math.round(v.correct/v.attempts*100):null})).filter(v=>filter==='all'||(filter==='none'&&v.pct===null)||(filter!=='none'&&v.pct!==null&&classify(v.pct)===filter)).sort((a,b)=>(b.attempts-a.attempts)||a.name.localeCompare(b.name,'pt-BR'));
+    $('dashboardErrorsSubjects').innerHTML=rows.length?rows.map(v=>{const cls=v.pct===null?'none':classify(v.pct);const label=v.pct===null?'Sem tentativas':v.pct+'%';return `<div><div class="dashboard-filter-row"><strong>${String(v.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong><span class="performance-pill ${cls}">${label}</span></div><div class="dashboard-filter-row" style="margin-top:3px;color:#64748b"><span>${v.questions} questões · ${v.attempts} tentativas · ${v.repeated} reincidentes</span><span>${v.wrong} erros</span></div>${v.pct!==null?`<div class="dashboard-filter-track"><div class="dashboard-filter-fill ${cls}" style="width:${v.pct}%"></div></div>`:''}</div>`}).join(''):'<p class="muted" style="margin:0">Nenhuma matéria corresponde a esse filtro.</p>';
+  };
+  $('dashboardErrorsFilter').onchange=renderErrorSubjects;renderErrorSubjects();
+
+  // Flashcards: o campo due/stage já é atualizado pelo fluxo de revisão do aplicativo.
+  const now=Date.now(),dueCards=cards.filter(c=>num(c.due)>0&&num(c.due)<=now),neverReviewed=cards.filter(c=>!num(c.due)),scheduled=cards.filter(c=>num(c.due)>now);
+  const flashSessions=sessions.filter(r=>r.source==='flashcards').sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const flash7=flashSessions.filter(r=>{const d=new Date(r.date);return !isNaN(d)&&now-d.getTime()<=7*86400000}).length;
+  $('dashboardFlashSummary').innerHTML=
+    `<div class="dashboard-metric"><strong>${cards.length}</strong><span>Cartões cadastrados</span></div>`+
+    `<div class="dashboard-metric"><strong style="color:#b42332">${dueCards.length}</strong><span>Precisam ser revisados</span></div>`+
+    `<div class="dashboard-metric"><strong>${neverReviewed.length}</strong><span>Ainda não revisados</span></div>`+
+    `<div class="dashboard-metric"><strong>${scheduled.length}</strong><span>Com revisão agendada</span></div>`+
+    `<div class="dashboard-metric"><strong>${flash7}</strong><span>Sessões de revisão nos últimos 7 dias</span></div>`;
+  $('dashboardFlashHistory').innerHTML=flashSessions.length?flashSessions.slice(0,6).map(r=>{const d=new Date(r.date);return `<div class="dashboard-history-item"><strong style="color:#344b68">${d.toLocaleDateString('pt-BR')} · ${String(r.subject||'Flashcards')}</strong><br>${String(r.notes||'Revisão registrada')} · ${duration(num(r.sec))}</div>`}).join(''):'<p class="muted" style="margin:0">Ainda não há revisões registradas no Histórico.</p>';
 }
 $('dashboardRefresh')?.addEventListener('click',renderDashboard);
 function fcFiltered(){const term=$('fcSearch').value.trim().toLocaleLowerCase('pt-BR');return flashcards.filter(c=>(!fcActiveSubject||fcActiveSubject===FC_ALL||c.subject===fcActiveSubject)&&fcCatMatch(c)&&(!term||(c.question+' '+c.answer+' '+c.subject).toLocaleLowerCase('pt-BR').includes(term))).sort((a,b)=>(a.due||0)-(b.due||0))}
@@ -695,7 +767,7 @@ function ceExceptSubjectNames(){return [...new Set(cadernoErradas.map(c=>String(
 function ceExceptUpdateCount(){const excluded=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);const available=cadernoErradas.filter(c=>!excluded.includes(String(c.subject||'').trim())).length;$('ceExceptCount').textContent=available+' '+(available===1?'questão disponível':'questões disponíveis')+' em '+ceExceptSubjectNames().filter(x=>!excluded.includes(x)).length+' matérias.';$('ceExceptStart').disabled=available===0}
 function ceOpenExcept(){ceExcludedSubjects=[];ceExceptRefresh();$('ceExceptModal').hidden=false}
 $('ceExceptSelectAll').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=true);ceExceptUpdateCount()};$('ceExceptClear').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=false);ceExceptUpdateCount()};$('ceExceptCancel').onclick=()=>{$('ceExceptModal').hidden=true};$('ceExceptModal').addEventListener('click',e=>{if(e.target===$('ceExceptModal'))$('ceExceptCancel').click()});$('ceExceptStart').onclick=()=>{ceExcludedSubjects=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);$('ceExceptModal').hidden=true;if(!cadernoErradas.some(c=>!ceExcludedSubjects.includes(c.subject))){alert('Não há questões disponíveis com essa seleção.');return}ceOpenStudy(CE_EXCEPT)};
-$('ceReveal').onclick=()=>{if(ceShowingResult){$('ceStudyClose').click();return}const items=ceReviewItems();if(!items.length)return;if(!ceRevealed){if(!ceSelectedAnswer){alert('Selecione uma alternativa antes de mostrar a resposta.');return}const c=items[Math.min(ceIndex,items.length-1)];if(ceSelectedAnswer===c.correct){ceCorrectCount++}else ceWrongCount++;ceAnsweredCount++;ceRevealed=true;ceRenderReview();return}if(ceIndex===items.length-1){ceShowResult();return}ceIndex++;ceRevealed=false;ceSelectedAnswer='';ceOptionOrder=[];ceRenderReview()};
+$('ceReveal').onclick=()=>{if(ceShowingResult){$('ceStudyClose').click();return}const items=ceReviewItems();if(!items.length)return;if(!ceRevealed){if(!ceSelectedAnswer){alert('Selecione uma alternativa antes de mostrar a resposta.');return}const c=items[Math.min(ceIndex,items.length-1)];c.attempts=(Number(c.attempts)||0)+1;c.lastAttemptAt=new Date().toISOString();if(ceSelectedAnswer===c.correct){ceCorrectCount++;c.correctAttempts=(Number(c.correctAttempts)||0)+1}else{ceWrongCount++;c.wrongAttempts=(Number(c.wrongAttempts)||0)+1}localStorage.setItem(CEKEY,JSON.stringify(cadernoErradas));ceAnsweredCount++;ceRevealed=true;ceRenderReview();return}if(ceIndex===items.length-1){ceShowResult();return}ceIndex++;ceRevealed=false;ceSelectedAnswer='';ceOptionOrder=[];ceRenderReview()};
 $('ceRestart').onclick=()=>{ceTimerReset();ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();ceRenderReview()};
 ceRender();function fcSubjectNames(){return [...new Set([...subjects,...flashcards.map(c=>c.subject)].map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base',numeric:true}))}
 function fcSubjectMenu(open=true,filterText=null){const menu=$('fcSubjectOptions'),input=$('fcSubject'),term=(filterText===null?input.value:filterText).trim().toLocaleLowerCase('pt-BR');menu.innerHTML='';const matches=fcSubjectNames().filter(name=>name.toLocaleLowerCase('pt-BR').includes(term));if(matches.length){matches.forEach(name=>{const option=document.createElement('button');option.type='button';option.className='fc-subject-option';option.setAttribute('role','option');option.textContent=name;option.addEventListener('pointerdown',e=>e.preventDefault());option.onclick=()=>{input.value=name;fcSubjectMenu(false);input.focus()};menu.appendChild(option)})}else{const empty=document.createElement('div');empty.className='fc-subject-empty';empty.textContent=term?'Nenhuma matéria encontrada. Você pode usar o texto digitado.':'Nenhuma matéria cadastrada ainda. Digite para criar uma.';menu.appendChild(empty)}menu.hidden=!open;input.setAttribute('aria-expanded',String(open));$('fcSubjectToggle').setAttribute('aria-expanded',String(open))}
