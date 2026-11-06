@@ -1,6 +1,6 @@
 /* Service worker do Circuito Loop.
    Para publicar uma nova versão do app, aumente o número em CACHE_VERSION. */
-const CACHE_VERSION = 'v42';
+const CACHE_VERSION = 'v43';
 const CACHE_NAME = 'circuito-loop-' + CACHE_VERSION;
 const APP_SHELL = [
   './',
