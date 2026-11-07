@@ -1,6 +1,6 @@
 /* Service worker do Circuito Loop.
    Para publicar uma nova versão do app, aumente o número em CACHE_VERSION. */
-const CACHE_VERSION = 'v54';
+const CACHE_VERSION = 'v55';
 const CACHE_NAME = 'circuito-loop-' + CACHE_VERSION;
 const APP_SHELL = [
   './',
@@ -13,6 +13,12 @@ const APP_SHELL = [
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png'
 ];
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'GET_VERSION' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ type: 'SW_VERSION', version: CACHE_VERSION });
+  }
+});
 
 self.addEventListener('install', event => {
   event.waitUntil(
