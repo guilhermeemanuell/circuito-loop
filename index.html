@@ -719,9 +719,30 @@ function ceGc(){ /* remove do aparelho imagens que nenhuma questão usa mais (co
 }
 setTimeout(ceGc,10000);
 function ceResetModal(){ceImageId='';$('ceImageMsg').textContent='';ceImageRefresh();ceEditId=null;$('ceSubject').value='';$('ceQuestion').value='';['A','B','C','D','E'].forEach(l=>$('ceOption'+l).value='');$('ceCorrect').value='A';$('ceComment').value='';$('ceMsg').textContent='';$('ceAdd').textContent='Adicionar questão';$('ceModalHeading').textContent='Adicionar questão errada';ceSubjectMenu(false)}function ceOpen(){ceResetModal();$('ceModal').hidden=false;ceSubjectMenu(false);$('ceSubject').focus()}function ceFiltered(){return cadernoErradas.filter(c=>!ceActiveSubject||ceActiveSubject===CE_ALL||(ceActiveSubject===CE_EXCEPT?!ceExcludedSubjects.includes(c.subject):c.subject===ceActiveSubject))}const CEQUEUEKEY='circuitoLoop.cadernoErradas.recentQueues.v1';let ceRecentQueues={};try{ceRecentQueues=JSON.parse(localStorage.getItem(CEQUEUEKEY)||'{}')}catch(e){}if(!ceRecentQueues||typeof ceRecentQueues!=='object'||Array.isArray(ceRecentQueues))ceRecentQueues={};
+let ceSimCycleCompleted=false;
+function ceSimuladoNormalizeCycle(){
+ const pool=cadernoErradas;
+ if(pool.length&&pool.every(c=>c.simuladoCycleCorrect===true)){
+  pool.forEach(c=>{delete c.simuladoCycleCorrect});
+  localStorage.setItem(CEKEY,JSON.stringify(cadernoErradas));
+  return true;
+ }
+ return false;
+}
+function ceSimuladoMarkCorrect(card){
+ if(ceActiveSubject!==CE_ALL||!card)return;
+ card.simuladoCycleCorrect=true;
+ if(cadernoErradas.length&&cadernoErradas.every(c=>c.simuladoCycleCorrect===true)){
+  cadernoErradas.forEach(c=>{delete c.simuladoCycleCorrect});
+  ceSimCycleCompleted=true;
+ }
+}
 function ceBuildQueue(){
   const allMode=ceActiveSubject===CE_ALL||ceActiveSubject===CE_EXCEPT;
-  const pool=ceActiveSubject===CE_EXCEPT?cadernoErradas.filter(c=>!ceExcludedSubjects.includes(c.subject)):(allMode?cadernoErradas:cadernoErradas.filter(c=>c.subject===ceActiveSubject));
+  let pool=ceActiveSubject===CE_EXCEPT?cadernoErradas.filter(c=>!ceExcludedSubjects.includes(c.subject)):(allMode?cadernoErradas:cadernoErradas.filter(c=>c.subject===ceActiveSubject));
+  /* No Simuladão, questões acertadas ficam fora do ciclo atual. O estado é salvo no próprio cadastro
+   da questão para acompanhar a sincronização e não interfere nas revisões por matéria/Todas menos. */
+  if(ceActiveSubject===CE_ALL){ceSimuladoNormalizeCycle();pool=pool.filter(c=>!c.simuladoCycleCorrect)}
   const ids=pool.map(c=>c.id);
   if(ids.length<=1){ceQueue=ids.slice();ceRecentQueues[ceActiveSubject]=ceQueue.slice();localStorage.setItem(CEQUEUEKEY,JSON.stringify(ceRecentQueues));return}
   const previous=Array.isArray(ceRecentQueues[ceActiveSubject])?ceRecentQueues[ceActiveSubject]:[];
@@ -812,6 +833,7 @@ function ceShowResult(){
   save();
   const all=ceReviewItems().length;
   ceSavedNote='Resultado registrado no Resumo geral e no Histórico ('+total+' de '+all+' '+(all===1?'questão respondida':'questões respondidas')+', tempo '+fmt(sec)+').';
+  if(ceActiveSubject===CE_ALL&&ceSimCycleCompleted)ceSavedNote+=' Ciclo concluído! Todas as questões foram acertadas e o Simuladão foi reiniciado.';
  }
  ceShowingResult=true;ceRenderReview();
 }
@@ -825,7 +847,7 @@ function ceFinishEarly(){
 $('ceFinish').onclick=ceFinishEarly;
 
 function ceOpenStudy(subject){
- ceTimerReset();ceActiveSubject=subject;ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();$('ceStudyHeading').textContent=subject===CE_ALL?'Simuladão — todas as matérias':subject===CE_EXCEPT?'Todas menos... — questões selecionadas':'Revisar: '+subject;$('ceWorkspace').hidden=false;
+ ceTimerReset();ceSimCycleCompleted=false;ceActiveSubject=subject;ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();$('ceStudyHeading').textContent=subject===CE_ALL?'Simuladão — todas as matérias':subject===CE_EXCEPT?'Todas menos... — questões selecionadas':'Revisar: '+subject;$('ceWorkspace').hidden=false;
  $('ceStudyMount').appendChild($('ceWorkspace'));$('ceStudyModal').hidden=false;ceRenderReview();
 }
 $('ceStudyClose').onclick=()=>{$('ceStudyModal').hidden=true;ceQueue=[];ceActiveSubject='';ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;$('errorsPage').appendChild($('ceWorkspace'));$('ceWorkspace').hidden=true;ceRender()};
@@ -902,8 +924,8 @@ function ceExceptSubjectNames(){return [...new Set(cadernoErradas.map(c=>String(
 function ceExceptUpdateCount(){const excluded=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);const available=cadernoErradas.filter(c=>!excluded.includes(String(c.subject||'').trim())).length;$('ceExceptCount').textContent=available+' '+(available===1?'questão disponível':'questões disponíveis')+' em '+ceExceptSubjectNames().filter(x=>!excluded.includes(x)).length+' matérias.';$('ceExceptStart').disabled=available===0}
 function ceOpenExcept(){ceExcludedSubjects=[];ceExceptRefresh();$('ceExceptModal').hidden=false}
 $('ceExceptSelectAll').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=true);ceExceptUpdateCount()};$('ceExceptClear').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=false);ceExceptUpdateCount()};$('ceExceptCancel').onclick=()=>{$('ceExceptModal').hidden=true};$('ceExceptModal').addEventListener('click',e=>{if(e.target===$('ceExceptModal'))$('ceExceptCancel').click()});$('ceExceptStart').onclick=()=>{ceExcludedSubjects=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);$('ceExceptModal').hidden=true;if(!cadernoErradas.some(c=>!ceExcludedSubjects.includes(c.subject))){alert('Não há questões disponíveis com essa seleção.');return}ceOpenStudy(CE_EXCEPT)};
-$('ceReveal').onclick=()=>{if(ceShowingResult){$('ceStudyClose').click();return}const items=ceReviewItems();if(!items.length)return;if(!ceRevealed){if(!ceSelectedAnswer){alert('Selecione uma alternativa antes de mostrar a resposta.');return}const c=items[Math.min(ceIndex,items.length-1)];c.attempts=(Number(c.attempts)||0)+1;c.lastAttemptAt=new Date().toISOString();if(ceSelectedAnswer===c.correct){ceCorrectCount++;c.correctAttempts=(Number(c.correctAttempts)||0)+1}else{ceWrongCount++;c.wrongAttempts=(Number(c.wrongAttempts)||0)+1}localStorage.setItem(CEKEY,JSON.stringify(cadernoErradas));ceAnsweredCount++;ceRevealed=true;ceRenderReview();return}if(ceIndex===items.length-1){ceShowResult();return}ceIndex++;ceRevealed=false;ceSelectedAnswer='';ceOptionOrder=[];ceRenderReview()};
-$('ceRestart').onclick=()=>{ceTimerReset();ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();ceRenderReview()};
+$('ceReveal').onclick=()=>{if(ceShowingResult){$('ceStudyClose').click();return}const items=ceReviewItems();if(!items.length)return;if(!ceRevealed){if(!ceSelectedAnswer){alert('Selecione uma alternativa antes de mostrar a resposta.');return}const c=items[Math.min(ceIndex,items.length-1)];c.attempts=(Number(c.attempts)||0)+1;c.lastAttemptAt=new Date().toISOString();if(ceSelectedAnswer===c.correct){ceCorrectCount++;c.correctAttempts=(Number(c.correctAttempts)||0)+1;ceSimuladoMarkCorrect(c)}else{ceWrongCount++;c.wrongAttempts=(Number(c.wrongAttempts)||0)+1}localStorage.setItem(CEKEY,JSON.stringify(cadernoErradas));ceAnsweredCount++;ceRevealed=true;ceRenderReview();return}if(ceIndex===items.length-1){ceShowResult();return}ceIndex++;ceRevealed=false;ceSelectedAnswer='';ceOptionOrder=[];ceRenderReview()};
+$('ceRestart').onclick=()=>{ceTimerReset();ceSimCycleCompleted=false;ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();ceRenderReview()};
 ceRender();function fcSubjectNames(){return [...new Set([...subjects,...flashcards.map(c=>c.subject)].map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base',numeric:true}))}
 function fcSubjectMenu(open=true,filterText=null){const menu=$('fcSubjectOptions'),input=$('fcSubject'),term=(filterText===null?input.value:filterText).trim().toLocaleLowerCase('pt-BR');menu.innerHTML='';const matches=fcSubjectNames().filter(name=>name.toLocaleLowerCase('pt-BR').includes(term));if(matches.length){matches.forEach(name=>{const option=document.createElement('button');option.type='button';option.className='fc-subject-option';option.setAttribute('role','option');option.textContent=name;option.addEventListener('pointerdown',e=>e.preventDefault());option.onclick=()=>{input.value=name;fcSubjectMenu(false);input.focus()};menu.appendChild(option)})}else{const empty=document.createElement('div');empty.className='fc-subject-empty';empty.textContent=term?'Nenhuma matéria encontrada. Você pode usar o texto digitado.':'Nenhuma matéria cadastrada ainda. Digite para criar uma.';menu.appendChild(empty)}menu.hidden=!open;input.setAttribute('aria-expanded',String(open));$('fcSubjectToggle').setAttribute('aria-expanded',String(open))}
 $('fcCategoryInput').addEventListener('focus',fcCatOptions);$('fcSubject').addEventListener('input',fcCatOptions);$('fcSubject').addEventListener('change',fcCatOptions);
