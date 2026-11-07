@@ -90,7 +90,7 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
  #dashboardPage .dashboard-panel{padding:14px}
  #dashboardDaily{min-height:140px}
 }
-</style><main><header style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h1 id="appTitle">📚 Circuito Loop</h1><p class="muted">Controle local de sessões, tempo e questões.</p></div><div class="tools"><span id="appSwVersion" class="sw-version" title="Versão informada pelo Service Worker">SW: verificando…</span><button class="alt export-tool" id="exportOpen" type="button" title="Exportar CSV" aria-label="Exportar CSV"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 11v7m-3-3 3 3 3-3"/></svg></button><button class="alt" id="syncOpen" type="button">☁️ Sincronizar</button></div></header>
+</style><main><header style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h1 id="appTitle">📚 Circuito Loop</h1><p class="muted">Controle local de sessões, tempo e questões.</p></div><div class="tools"><button class="alt export-tool" id="exportOpen" type="button" title="Exportar CSV" aria-label="Exportar CSV"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 11v7m-3-3 3 3 3-3"/></svg></button><button class="alt" id="syncOpen" type="button">☁️ Sincronizar</button></div></header>
 <nav class="fc-row" style="margin:14px 0"><button id="studyTab" type="button">Circuito Loop</button><button id="flashTab" class="alt" type="button">Flashcards</button><button id="errorsTab" class="alt" type="button">Caderno de Erradas</button><button id="dashboardTab" class="alt" type="button">Painel de desempenho</button></nav>
 <section class="card" id="dashboardPage" hidden>
   <div class="dashboard-intro">
@@ -271,7 +271,6 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 }
 </style>
 <style id="export-style">
-main>header .sw-version{display:inline-flex;align-items:center;white-space:nowrap;font-size:12px;color:#64748b;padding:0 4px}
 main>header .export-tool{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:8px}
 main>header .export-tool svg{flex:none}
 :root{--delete-border:#dce3ec;--delete-surface:#f8fafc;--delete-muted:#64748b}
@@ -433,9 +432,6 @@ let fcIndex=0,fcRevealed=false,fcEditId=null,fcActiveSubject="",fcQueue=[],fcRev
 try{flashcards=JSON.parse(localStorage.getItem(FCKEY)||'[]');if(!Array.isArray(flashcards))flashcards=[]}catch(e){flashcards=[]}
 const fcSave=()=>{localStorage.setItem(FCKEY,JSON.stringify(flashcards));fcRender()};
 const fcEsc=x=>String(x??'');
-// Exibe a versão declarada pelo Service Worker ativo.
-function updateSwVersion(){const el=$('appSwVersion');if(!el)return;const sw=navigator.serviceWorker;if(!sw){el.textContent='SW: indisponível';return}const worker=sw.controller;if(!worker){el.textContent='SW: aguardando';return}const channel=new MessageChannel();let done=false;const timer=setTimeout(()=>{if(!done)el.textContent='SW: não identificado'},1800);channel.port1.onmessage=e=>{done=true;clearTimeout(timer);if(e.data&&e.data.version)el.textContent='SW: '+e.data.version};worker.postMessage({type:'GET_VERSION'},[channel.port2])}
-if('serviceWorker' in navigator){navigator.serviceWorker.addEventListener('controllerchange',updateSwVersion);navigator.serviceWorker.ready.then(updateSwVersion).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',updateSwVersion);else updateSwVersion()}
 function showAppPage(page){document.querySelectorAll('main>section.card').forEach(el=>{if(el.id==='flashPage')el.hidden=page!=='flash';else if(el.id==='errorsPage')el.hidden=page!=='errors';else if(el.id==='dashboardPage')el.hidden=page!=='dashboard';else el.hidden=page!=='study'});$('studyTab').className=page==='study'?'':'alt';$('flashTab').className=page==='flash'?'':'alt';$('errorsTab').className=page==='errors'?'':'alt';$('dashboardTab').className=page==='dashboard'?'':'alt';$('appTitle').textContent=page==='flash'?'🃏 Flashcards':page==='errors'?'📕 Caderno de Erradas':page==='dashboard'?'📊 Painel de desempenho':'📚 Circuito Loop';if(page==='flash')fcRender();if(page==='dashboard')renderDashboard()}
 function fcShowPage(show){showAppPage(show?'flash':'study')}
 $('studyTab').onclick=()=>showAppPage('study');$('flashTab').onclick=()=>showAppPage('flash');$('errorsTab').onclick=()=>showAppPage('errors');$('dashboardTab').onclick=()=>showAppPage('dashboard');
