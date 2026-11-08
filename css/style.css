@@ -47,7 +47,7 @@ body{font:15px system-ui;margin:0;background:#f3f6fa;color:#1f2937}main{max-widt
 #dashboardSummary .stat{position:relative;overflow:hidden;border:1px solid #e2eaf4;background:#fff;border-radius:14px;padding:15px;min-width:0;box-shadow:0 3px 12px #1e3a5f08}
 #dashboardSummary .stat b{font-size:clamp(20px,3vw,27px);line-height:1.2;color:#17365f;overflow-wrap:anywhere}
 #dashboardSummary .stat span{display:block;margin-top:6px;color:#64748b;font-size:12px;line-height:1.35}
-#dashboardPage .dashboard-panels{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;margin-top:14px}
+#dashboardPage .dashboard-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
 #dashboardPage .dashboard-panel{background:#fff;border:1px solid #e2eaf4;border-radius:14px;padding:16px;min-width:0;box-shadow:0 3px 12px #1e3a5f08}
 #dashboardPage .dashboard-panel h3{font-size:15px;margin:0 0 14px;color:#253b56}
 #dashboardDaily{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));align-items:end;gap:7px!important;min-height:150px;padding-top:8px}
@@ -321,8 +321,8 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 
 
 /* Dias consecutivos e meta semanal — Painel de desempenho */
-#dashboardPage .dashboard-goals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
-#dashboardPage .dashboard-goal{background:#fff;border:1px solid #e2eaf4;border-radius:14px;padding:16px;min-width:0;box-shadow:0 3px 12px #1e3a5f08}
+#dashboardPage .dashboard-goals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;width:100%;min-width:0;box-sizing:border-box}
+#dashboardPage .dashboard-goal{background:#fff;border:1px solid #e2eaf4;border-radius:14px;padding:16px;min-width:0;width:100%;height:201.5px;box-sizing:border-box;box-shadow:0 3px 12px #1e3a5f08}
 #dashboardPage .dashboard-goal h3{font-size:15px;margin:0 0 10px;color:#253b56}
 #dashboardPage .streak-value{display:flex;align-items:baseline;gap:8px;font-size:clamp(26px,4vw,34px);font-weight:750;color:#17365f;line-height:1.1}
 #dashboardPage .streak-value .streak-fire{font-size:clamp(24px,3.5vw,30px)}
