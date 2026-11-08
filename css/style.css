@@ -315,3 +315,6 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 /* Sem a linha de categorias, o título fica com o mesmo respiro (14px) que a linha de categorias tem até o cartão */
 #fcWorkspace #fcCatRow[hidden]{display:block;height:6px;margin:0;padding:0;visibility:hidden}
 
+
+/* Respeita o atributo hidden nas barras de formatação e prévias. */
+.rich-bar[hidden],.rich-preview[hidden]{display:none!important}
