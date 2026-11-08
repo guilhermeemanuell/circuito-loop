@@ -8,7 +8,7 @@
   </div>
   <div class="stats" id="dashboardSummary"></div>
   <div class="dashboard-goals">
-    <div class="dashboard-goal">
+    <div class="dashboard-panel dashboard-goal">
       <h3><span id="dashboardStreakEmoji" aria-hidden="true">🥶</span> Dias consecutivos</h3>
       <div class="streak-value">
         <span class="streak-fire" id="dashboardStreakIcon" aria-hidden="true">🥶</span>
@@ -18,12 +18,14 @@
       <span class="streak-record" id="dashboardStreakRecord">Recorde: <strong>0 dias</strong></span>
       <div class="goal-hint" id="dashboardStreakHint">Estude pelo menos uma sessão por dia para manter sua sequência.</div>
     </div>
-    <div class="dashboard-goal">
+    <div class="dashboard-panel dashboard-goal">
       <h3>🎯 Meta semanal</h3>
       <div class="goal-row">
         <label for="dashboardGoalHours">Horas por semana</label>
         <input id="dashboardGoalHours" type="number" min="0" max="168" step="0.5" inputmode="decimal" placeholder="0" aria-label="Meta de horas por semana">
+        <button id="dashboardGoalSave" class="alt" type="button">Salvar meta</button>
       </div>
+      <div class="goal-save-status" id="dashboardGoalSaveStatus" aria-live="polite"></div>
       <div class="goal-numbers">
         <span><strong id="dashboardGoalDone">0h</strong> estudadas</span>
         <span id="dashboardGoalPct">—</span>

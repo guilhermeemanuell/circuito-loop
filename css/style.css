@@ -333,6 +333,9 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 #dashboardPage .goal-row label{font-size:12px;font-weight:600;color:#526173;margin:0}
 #dashboardPage .goal-row input{width:88px;padding:7px 9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:14px;text-align:center}
 #dashboardPage .goal-row input:focus{outline:2px solid #2459a6;outline-offset:1px}
+#dashboardPage .goal-row{align-items:center}
+#dashboardPage #dashboardGoalSave{padding:8px 12px;font-size:13px;white-space:nowrap}
+#dashboardPage .goal-save-status{min-height:16px;margin:-3px 0 8px;font-size:11px;color:#64748b;line-height:1.35}
 #dashboardPage .goal-numbers{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:#526173}
 #dashboardPage .goal-numbers strong{font-size:16px;color:#17365f}
 #dashboardPage .goal-track{height:12px;background:#edf2f8;border-radius:99px;overflow:hidden;margin-top:8px}

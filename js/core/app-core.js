@@ -105,7 +105,26 @@ function renderDashboard(){
   // Meta semanal configurável, calculada sobre as últimas 168 horas.
   const weeklyGoalKey='circuitoLoop.weeklyGoalHours.v1';
   let weeklyGoal=0;try{weeklyGoal=Math.max(0,Math.min(168,Number(localStorage.getItem(weeklyGoalKey))||0))}catch(e){}
-  const goalInput=$('dashboardGoalHours');if(goalInput){goalInput.value=weeklyGoal||'';goalInput.onchange=()=>{const value=Math.max(0,Math.min(168,Number(goalInput.value)||0));weeklyGoal=value;try{localStorage.setItem(weeklyGoalKey,String(value))}catch(e){};updateWeeklyGoal()};goalInput.oninput=()=>{const value=Math.max(0,Math.min(168,Number(goalInput.value)||0));weeklyGoal=value;updateWeeklyGoal()}}
+  const goalInput=$('dashboardGoalHours'),goalSave=$('dashboardGoalSave'),goalStatus=$('dashboardGoalSaveStatus');
+  if(goalInput){
+    goalInput.value=weeklyGoal||'';
+    goalInput.oninput=()=>{
+      const raw=goalInput.value.trim();
+      weeklyGoal=raw===''?0:Math.max(0,Math.min(168,Number(raw)||0));
+      if(goalStatus)goalStatus.textContent='Alteração não salva';
+      updateWeeklyGoal();
+    };
+  }
+  if(goalSave&&goalInput){
+    goalSave.onclick=()=>{
+      const raw=goalInput.value.trim();
+      const value=raw===''?0:Math.max(0,Math.min(168,Number(raw)||0));
+      weeklyGoal=value;goalInput.value=value||'';
+      try{localStorage.setItem(weeklyGoalKey,String(value));if(goalStatus)goalStatus.textContent='Meta salva neste dispositivo. Sincronização com os demais dispositivos será realizada automaticamente.';}
+      catch(e){if(goalStatus)goalStatus.textContent='Não foi possível salvar a meta neste dispositivo.';}
+      updateWeeklyGoal();
+    };
+  }
   const weekStart=Date.now()-7*86400000;
   const weeklySec=sessions.reduce((sum,r)=>{const d=new Date(r.date).getTime();return sum+(Number.isFinite(d)&&d>=weekStart&&d<=Date.now()?Math.max(0,num(r.sec)):0)},0);
   const weeklyHours=weeklySec/3600;
