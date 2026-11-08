@@ -1,6 +1,6 @@
 /* Service worker do Circuito Loop.
    Para publicar uma nova versão do app, aumente o número em CACHE_VERSION. */
-const CACHE_VERSION = 'v56';
+const CACHE_VERSION = 'v57';
 const CACHE_NAME = 'circuito-loop-' + CACHE_VERSION;
 const APP_SHELL = [
   './',
@@ -8,6 +8,11 @@ const APP_SHELL = [
   './manifest.webmanifest',
   './csv-export.js',
   './imagens.js',
+  './css/style.css',
+  './js/app-part-01.js',
+  './js/app-part-02.js',
+  './js/app-part-03.js',
+  './js/app-part-04.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

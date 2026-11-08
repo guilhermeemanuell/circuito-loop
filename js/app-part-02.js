@@ -1,0 +1,4 @@
+/* Circuito Loop — código extraído do bloco inline 2 do index.html. */
+(function(){const mq=matchMedia('(max-width:760px)'),b=document.body,st=document.getElementById('stop'),pz=document.getElementById('pause'),dc=document.getElementById('discard');const label=st.textContent;function hide(){b.classList.remove('reveal-fields');st.textContent=label}
+st.addEventListener('click',e=>{if(!mq.matches||b.classList.contains('reveal-fields'))return;e.stopImmediatePropagation();if(!pz.disabled&&!pz.hidden)pz.click();b.classList.add('reveal-fields');st.textContent='Confirmar e salvar';const f=document.querySelector('.session-fields');f&&f.scrollIntoView({behavior:'smooth',block:'center'})},true);
+st.addEventListener('click',()=>{setTimeout(()=>{if(st.disabled)hide()},0)});dc.addEventListener('click',()=>setTimeout(()=>{if(dc.disabled)hide()},0));document.getElementById('resume').addEventListener('click',hide);})();

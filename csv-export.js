@@ -16,13 +16,20 @@
       rows = [...data.records].sort((a, b) => String(b.date).localeCompare(String(a.date))).map(r => [r.date, r.subject, duration(r.sec), r.sec, r.q, r.c, Number(r.q) - Number(r.c), r.q ? (100 * r.c / r.q).toFixed(2) : '0.00', r.notes]);
       filename = 'historico-de-estudo.csv';
     } else if (kind === 'flashcards') {
-      headers = ['Matéria', 'Pergunta', 'Resposta', 'Categoria'];
-      rows = bySubject(data.flashcards).map(c => [c.subject, c.question, c.answer, c.category || '']);
+      headers = ['Matéria', 'Pergunta', 'Resposta'];
+      rows = bySubject(data.flashcards).map(c => [c.subject, c.question, c.answer]);
       filename = 'flashcards.csv';
     } else if (kind === 'errors') {
-      headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E', 'Imagem', 'Comentário'];
-      rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? ''), c.image ? c.image + '.jpg' : '', c.comment || '']);
+      headers = ['Matéria', 'Pergunta', 'Alternativa correta', 'Resposta correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E'];
+      rows = bySubject(data.cadernoErradas).map(c => [c.subject, c.question, c.correct, c.options?.[c.correct] ?? c.answer ?? '', ...['A', 'B', 'C', 'D', 'E'].map(k => c.options?.[k] ?? '')]);
       filename = 'caderno-de-erradas.csv';
+    } else if (kind === 'all') {
+      headers = ['Tipo de dado', 'Data e hora', 'Matéria', 'Tempo de estudo', 'Tempo em segundos', 'Questões respondidas', 'Acertos', 'Erros', 'Aproveitamento (%)', 'Pergunta', 'Resposta', 'Alternativa correta', 'Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E', 'Anotações'];
+      rows = [];
+      [...(data.records || [])].sort((a,b)=>String(b.date).localeCompare(String(a.date))).forEach(r=>rows.push(['Histórico',r.date,r.subject,duration(r.sec),r.sec,r.q,r.c,Number(r.q)-Number(r.c),r.q?(100*r.c/r.q).toFixed(2):'0.00','','','','','','','','',r.notes]));
+      bySubject(data.flashcards || []).forEach(c=>rows.push(['Flashcard','',''+c.subject,'','','','','','',''+c.question,c.answer,'','','','','','','']));
+      bySubject(data.cadernoErradas || []).forEach(c=>rows.push(['Caderno de Erradas','',''+c.subject,'','','','','','',''+c.question,'',c.correct,...['A','B','C','D','E'].map(k=>c.options?.[k]??''),'']));
+      filename = 'todos-os-dados.csv';
     } else {
       throw new Error('Selecione o conteúdo para exportar.');
     }
@@ -62,139 +69,81 @@
     return rows;
   }
 
-  // existing: { subjects: [...nomes do circuito], flashcards: [...], cadernoErradas: [...] }
+  // existing: { subjects, flashcards, cadernoErradas }
   function planImport(text, existing) {
     const rows = parse(text);
     if (rows.length < 2) throw new Error('O arquivo CSV está vazio ou só tem o cabeçalho.');
-    const head = rows[0].map(norm), col = n => head.indexOf(n);
-    const iS = col('materia'), iQ = col('pergunta');
+    const head = rows[0].map(norm), col = n => head.indexOf(norm(n));
+    const iS=col('materia'), iQ=col('pergunta');
     let kind;
-    if (col('alternativa correta') >= 0) kind = 'errors';
-    else if (col('data e hora') >= 0) throw new Error('Este CSV é do Histórico de estudo, que não pode ser importado aqui. Use um CSV de Flashcards ou do Caderno de Erradas.');
-    else if (col('resposta') >= 0) kind = 'flashcards';
-    else throw new Error('Não reconheci o formato do CSV. Flashcards precisam das colunas Matéria, Pergunta e Resposta; Caderno de Erradas, de Matéria, Pergunta, Alternativa correta e Alternativa A a E.');
-    if (iS < 0 || iQ < 0) throw new Error('O CSV precisa ter as colunas “Matéria” e “Pergunta”.');
-    const iA = col('resposta'), iC = col('alternativa correta'), iR = col('resposta correta'), iCat = col('categoria'), iImg = col('imagem'), iComment = col('comentario');
-    const iOpt = ['a', 'b', 'c', 'd', 'e'].map(l => col('alternativa ' + l));
-    if (kind === 'errors' && iOpt.some(i => i < 0)) throw new Error('Este CSV de Caderno de Erradas não tem as colunas Alternativa A a E, então não dá para recriar as questões. Exporte o CSV novamente por esta versão do app (a exportação agora inclui as cinco alternativas).');
-
-    const list = (kind === 'flashcards' ? existing.flashcards : existing.cadernoErradas) || [];
-    const canon = new Map();
-    [...(existing.subjects || []), ...list.map(c => c.subject)].forEach(s => { const t = String(s || '').trim(); if (t && !canon.has(norm(t))) canon.set(norm(t), t); });
-    const known = new Set(canon.keys());
-    // assinatura do conteúdo, para dizer se um repetido é idêntico ou tem resposta/alternativas diferentes
-    const sigOf = x => kind === 'flashcards'
-      ? norm(x.answer)
-      : String(x.correct || '') + '|' + ['A', 'B', 'C', 'D', 'E'].map(l => norm((x.options || {})[l])).join('|');
-    // chave = matéria + pergunta (sem acento/maiúsculas/espaços extras); guarda de onde veio o primeiro item com essa chave
-    const seen = new Map();
-    // repetido = mesma matéria, pergunta, resposta e categoria (Caderno de Erradas: matéria, pergunta e alternativas)
-    const fullKey = (x, subj) => [norm(subj), norm(x.question), sigOf(x), kind === 'flashcards' ? norm(x.category) : ''].join('\u0000');
-    list.forEach(x => seen.set(fullKey(x, x.subject), { origin: 'app', sig: sigOf(x), answer: x.answer || '' }));
-    const cards = [], invalid = [], newSubjects = new Set(), touched = new Set(), dupItems = [];
-    let duplicates = 0;
-    rows.slice(1).forEach((r, k) => {
-      const line = k + 2, v = i => i < 0 ? '' : clean(r[i]);
-      let subject = v(iS), question = v(iQ), item;
-      if (!subject || !question) { invalid.push(line); return; }
-      if (kind === 'flashcards') {
-        const answer = v(iA);
-        if (!answer) { invalid.push(line); return; }
-        item = { subject, question, answer, category: v(iCat) };
-      } else {
-        const correct = v(iC).toUpperCase(), options = {};
-        ['A', 'B', 'C', 'D', 'E'].forEach((l, n) => { options[l] = v(iOpt[n]); });
-        if (!/^[A-E]$/.test(correct)) { invalid.push(line); return; }
-        if (!options[correct] && iR >= 0) options[correct] = v(iR);
-        if (Object.values(options).some(x => !x)) { invalid.push(line); return; }
-        const imageNames = [...new Set([question, ...Object.values(options)].flatMap(text => [...String(text).matchAll(/\{\{imagem:([^{}]+)\}\}/gi)].map(m => m[1].trim())).filter(Boolean))];
-        item = { subject, question, options, correct, ...(iImg >= 0 && v(iImg) ? { imageName: v(iImg).split(/[\\/]/).pop() } : {}), ...(imageNames.length ? { imageNames } : {}), ...(iComment >= 0 && v(iComment) ? { comment: v(iComment) } : {}) };
+    if(col('alternativa correta')>=0) kind='errors';
+    else if(col('data e hora')>=0) throw new Error('Este CSV é do Histórico de estudo, que não pode ser importado aqui.');
+    else if(col('resposta')>=0) kind='flashcards';
+    else throw new Error('Não reconheci o formato do CSV.');
+    if(iS<0||iQ<0) throw new Error('O CSV precisa ter as colunas Matéria e Pergunta.');
+    const iA=col('resposta'), iC=col('alternativa correta'), iR=col('resposta correta');
+    const iOpt=['a','b','c','d','e'].map(l=>col('alternativa '+l));
+    if(kind==='errors'&&iOpt.some(i=>i<0)) throw new Error('O CSV do Caderno de Erradas precisa conter as alternativas A a E.');
+    const iComment=col('comentario'), iImage=col('imagem'), iCategory=col('categoria');
+    const list=(kind==='flashcards'?existing.flashcards:existing.cadernoErradas)||[];
+    const canon=new Map();
+    [...(existing.subjects||[]),...list.map(c=>c.subject)].forEach(v=>{const t=String(v||'').trim(),k=norm(t);if(t&&!canon.has(k))canon.set(k,t)});
+    const known=new Set(canon.keys()), seen=new Map();
+    list.forEach(c=>seen.set(norm(c.subject)+'\u0000'+norm(c.question),{reason:'app',other:c}));
+    const cards=[],dupItems=[],invalid=[],newSubjects=new Set(),touched=new Set();
+    const get=(r,i)=>i<0?'':clean(r[i]);
+    rows.slice(1).forEach((r,k)=>{
+      const line=k+2,subject=get(r,iS),question=get(r,iQ); let item;
+      if(!subject||!question){invalid.push(line);return}
+      if(kind==='flashcards'){
+        const answer=get(r,iA);if(!answer){invalid.push(line);return}
+        item={subject,question,answer,...(iCategory>=0&&get(r,iCategory)?{category:get(r,iCategory)}:{})};
+      }else{
+        const correct=get(r,iC).toUpperCase(),options={};['A','B','C','D','E'].forEach((l,n)=>options[l]=get(r,iOpt[n]));
+        if(!/^[A-E]$/.test(correct)){invalid.push(line);return}
+        if(!options[correct]&&iR>=0)options[correct]=get(r,iR);
+        if(Object.values(options).some(x=>!x)){invalid.push(line);return}
+        item={subject,question,options,correct};
+        if(iComment>=0&&get(r,iComment))item.comment=get(r,iComment);
+        // A coluna Imagem aceita o marcador padronizado; nomes antigos continuam aceitos.
+        if(iImage>=0&&get(r,iImage)){
+          const raw=get(r,iImage),m=raw.match(/^\s*\{\{imagem:([^{}]+)\}\}\s*$/i);
+          item.imageName=(m?m[1]:raw).trim();
+        }
       }
-      const key = norm(subject);
-      const dupKey = fullKey(item, subject);
-      const prev = seen.get(dupKey);
-      if (prev) {
-        duplicates++;
-        item.subject = canon.get(key) || subject;
-        dupItems.push({ line, subject: item.subject, question, reason: prev.origin, firstLine: prev.line || 0, differs: false, answer: item.answer || '', other: prev.answer || '', item });
-        return;
-      }
-      seen.set(dupKey, { origin: 'file', line, sig: sigOf(item), answer: item.answer || '' });
-      if (!canon.has(key)) { canon.set(key, subject); newSubjects.add(subject); }
-      else if (known.has(key)) touched.add(canon.get(key));
-      item.subject = canon.get(key);
-      cards.push(item);
+      const key=norm(subject),dupKey=key+'\u0000'+norm(question),prior=seen.get(dupKey);
+      if(prior){dupItems.push({line,subject,question,item,reason:prior.reason,firstLine:prior.line||0,differs:false});return}
+      seen.set(dupKey,{reason:'file',line,item});
+      if(!canon.has(key)){canon.set(key,subject);newSubjects.add(subject)}else if(known.has(key))touched.add(canon.get(key));
+      item.subject=canon.get(key);cards.push(item);
     });
-    return { kind, cards, dupItems, total: rows.length - 1, added: cards.length, duplicates, invalid, newSubjects: [...newSubjects], existingSubjects: [...touched] };
+    return {kind,cards,dupItems,invalid,total:rows.length-1,added:cards.length,duplicates:dupItems.length,newSubjects:[...newSubjects],existingSubjects:[...touched]};
   }
 
-
-  /* ===== Exportar tudo: um .zip com os três CSVs ===== */
-  const crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
-  const crc32 = u => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = crcTable[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
-  function zip(files) {
-    const enc = new TextEncoder(), now = new Date();
-    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
-    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
-    const parts = [], central = []; let offset = 0;
-    files.forEach(f => {
-      const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
-      const lh = new DataView(new ArrayBuffer(30));
-      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
-      lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
-      lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
-      parts.push(new Uint8Array(lh.buffer), name, data);
-      const ch = new DataView(new ArrayBuffer(46));
-      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
-      ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
-      ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
-      ch.setUint32(42, offset, true);
-      central.push(new Uint8Array(ch.buffer), name);
-      offset += 30 + name.length + data.length;
-    });
-    const csize = central.reduce((a, p) => a + p.length, 0), end = new DataView(new ArrayBuffer(22));
-    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
-    end.setUint32(12, csize, true); end.setUint32(16, offset, true);
-    const all = [...parts, ...central, new Uint8Array(end.buffer)], out = new Uint8Array(all.reduce((a, p) => a + p.length, 0));
-    let o = 0; all.forEach(p => { out.set(p, o); o += p.length; });
-    return out;
+  function subjects(kind,data){
+    const arr=(kind==='flashcards'?data.flashcards:data.cadernoErradas)||[],m=new Map();
+    arr.forEach(c=>{const name=String(c.subject||'').trim();if(!name)return;const key=norm(name);if(!m.has(key))m.set(key,{key,name,count:0});m.get(key).count++});
+    return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   }
-  function buildAll(data) {
-    const files = []; let count = 0;
-    ['history', 'flashcards', 'errors'].forEach(k => { const r = build(k, data); if (r.count) { files.push({ name: r.filename, data: r.csv }); count += r.count; } });
-    return { filename: 'circuito-loop-todos-os-dados.zip', count, files: files.map(f => f.name), bytes: files.length ? zip(files) : null };
-  }
-
-  /* ===== Exportar por matéria (um CSV por matéria; um .zip quando há mais de uma) ===== */
-  const subjKey = s => String(s || 'Sem matéria').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR') || 'sem matéria';
-  const itemsOf = (kind, data) => (kind === 'flashcards' ? data.flashcards : data.cadernoErradas) || [];
-  const slug = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sem-materia';
-  function subjects(kind, data) {
-    const m = new Map();
-    itemsOf(kind, data).forEach(c => { const k = subjKey(c.subject); if (!m.has(k)) m.set(k, { key: k, name: String(c.subject || '').trim() || 'Sem matéria', count: 0 }); m.get(k).count++; });
-    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }
-  // keys: chaves das matérias escolhidas; merge: true = um único CSV com todas as escolhidas
-  function buildBySubject(kind, data, keys, merge) {
-    if (kind !== 'flashcards' && kind !== 'errors') throw new Error('Exportação por matéria só vale para Flashcards e Caderno de Erradas.');
-    const prefix = kind === 'flashcards' ? 'flashcards' : 'caderno-de-erradas';
-    const field = kind === 'flashcards' ? 'flashcards' : 'cadernoErradas';
-    const chosen = subjects(kind, data).filter(s => keys.includes(s.key));
-    const sub = list => build(kind, { ...data, [field]: list });
-    const itemsFor = key => itemsOf(kind, data).filter(c => subjKey(c.subject) === key);
-    if (!chosen.length) return { filename: prefix + '.csv', count: 0, csv: '', files: [], bytes: null };
-    if (merge) {
-      const r = sub(chosen.flatMap(s => itemsFor(s.key)));
-      return chosen.length === 1 ? { ...r, filename: prefix + '-' + slug(chosen[0].name) + '.csv' } : r;
+  function crc32(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^0xffffffff)>>>0}
+  function zipFiles(files){
+    const enc=new TextEncoder(),locals=[],centrals=[];let offset=0;
+    const u16=n=>[n&255,(n>>>8)&255],u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];
+    for(const f of files){const name=enc.encode(f.name),data=typeof f.data==='string'?enc.encode(f.data):f.data,crc=crc32(data);
+      const lh=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...name]);
+      locals.push(lh,data);const ch=new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset),...name]);centrals.push(ch);offset+=lh.length+data.length;
     }
-    const used = new Map(), files = []; let count = 0;
-    chosen.forEach(s => {
-      const r = sub(itemsFor(s.key)); let base = slug(s.name); const n = (used.get(base) || 0) + 1; used.set(base, n); if (n > 1) base += '-' + n;
-      files.push({ name: prefix + '-' + base + '.csv', data: r.csv, count: r.count }); count += r.count;
-    });
-    if (files.length === 1) return { filename: files[0].name, count, csv: files[0].data };
-    return { filename: prefix + '-por-materia.zip', count, files: files.map(f => f.name), bytes: zip(files.map(f => ({ name: f.name, data: f.data }))) };
+    const centralSize=centrals.reduce((n,x)=>n+x.length,0),end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(centralSize),...u32(offset),...u16(0)]);
+    const all=[...locals,...centrals,end],size=all.reduce((n,x)=>n+x.length,0),out=new Uint8Array(size);let pos=0;all.forEach(x=>{out.set(x,pos);pos+=x.length});return out;
+  }
+  function buildAll(data){const kinds=['history','flashcards','errors'],files=kinds.map(k=>{const r=build(k,data);return{name:r.filename,data:r.csv}}).filter((f,i)=>f.data.split('\r\n').length>2);return{filename:'circuito-loop-todos-os-dados.zip',count:files.length?files.reduce((n,f)=>n+Math.max(0,f.data.split('\r\n').length-2),0):0,bytes:zipFiles(files),files:files.map(f=>f.name)}}
+  function buildBySubject(kind,data,keys,merge){
+    const source=kind==='flashcards'?data.flashcards:data.cadernoErradas,selected=new Set(keys),items=(source||[]).filter(c=>selected.has(norm(c.subject)));
+    if(merge)return build(kind,{...data,[kind==='flashcards'?'flashcards':'cadernoErradas']:items});
+    const groups=subjects(kind,{...data,[kind==='flashcards'?'flashcards':'cadernoErradas']:items}).map(s=>({name:s.name,items:items.filter(c=>norm(c.subject)===s.key)}));
+    const files=groups.map(g=>({name:g.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')+'-'+(kind==='flashcards'?'flashcards':'caderno-de-erradas')+'.csv',data:build(kind,{...data,[kind==='flashcards'?'flashcards':'cadernoErradas']:g.items}).csv}));
+    return{filename:'exportacao-por-materia.zip',count:items.length,bytes:zipFiles(files),files:files.map(f=>f.name)};
   }
 
-  root.CircuitoCsv = { build, buildAll, buildBySubject, subjects, zip, parse, planImport };
+  root.CircuitoCsv = { build, buildAll, buildBySubject, subjects, parse, planImport };
 })(globalThis);
