@@ -64,9 +64,12 @@ let fcIndex=0,fcRevealed=false,fcEditId=null,fcActiveSubject="",fcQueue=[],fcRev
 try{flashcards=JSON.parse(localStorage.getItem(FCKEY)||'[]');if(!Array.isArray(flashcards))flashcards=[]}catch(e){flashcards=[]}
 const fcSave=()=>{localStorage.setItem(FCKEY,JSON.stringify(flashcards));fcRender()};
 const fcEsc=x=>String(x??'');
-function showAppPage(page){document.querySelectorAll('main>section.card').forEach(el=>{if(el.id==='flashPage')el.hidden=page!=='flash';else if(el.id==='errorsPage')el.hidden=page!=='errors';else if(el.id==='dashboardPage')el.hidden=page!=='dashboard';else el.hidden=page!=='study'});$('studyTab').className=page==='study'?'':'alt';$('flashTab').className=page==='flash'?'':'alt';$('errorsTab').className=page==='errors'?'':'alt';$('dashboardTab').className=page==='dashboard'?'':'alt';$('appTitle').textContent=page==='flash'?'🃏 Flashcards':page==='errors'?'📕 Caderno de Erradas':page==='dashboard'?'📊 Painel de desempenho':'📚 Circuito Loop';if(page==='flash')fcRender();if(page==='dashboard')renderDashboard()}
+const APP_PAGE_KEY='circuitoLoop.activePage.v1';
+function showAppPage(page){if(!['study','flash','errors','dashboard'].includes(page))page='study';try{localStorage.setItem(APP_PAGE_KEY,page)}catch(e){}document.querySelectorAll('main>section.card').forEach(el=>{if(el.id==='flashPage')el.hidden=page!=='flash';else if(el.id==='errorsPage')el.hidden=page!=='errors';else if(el.id==='dashboardPage')el.hidden=page!=='dashboard';else el.hidden=page!=='study'});$('studyTab').className=page==='study'?'':'alt';$('flashTab').className=page==='flash'?'':'alt';$('errorsTab').className=page==='errors'?'':'alt';$('dashboardTab').className=page==='dashboard'?'':'alt';$('appTitle').textContent=page==='flash'?'🃏 Flashcards':page==='errors'?'📕 Caderno de Erradas':page==='dashboard'?'📊 Painel de desempenho':'📚 Circuito Loop';if(page==='flash')fcRender();if(page==='dashboard')renderDashboard()}
 function fcShowPage(show){showAppPage(show?'flash':'study')}
 $('studyTab').onclick=()=>showAppPage('study');$('flashTab').onclick=()=>showAppPage('flash');$('errorsTab').onclick=()=>showAppPage('errors');$('dashboardTab').onclick=()=>showAppPage('dashboard');
+// Restaura a última página após recarga (inclusive o gesto de atualizar do navegador/celular).
+let savedAppPage='study';try{savedAppPage=localStorage.getItem(APP_PAGE_KEY)||'study'}catch(e){}showAppPage(savedAppPage);
 
 function renderDashboard(){
   const safeRead=(key)=>{try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}};
@@ -226,6 +229,7 @@ function richRefresh(id){
 }
 function richRefreshAll(){richIds.forEach(richRefresh)}
 const richIds=['fcQuestion','fcAnswer','ceQuestion','ceOptionA','ceOptionB','ceOptionC','ceOptionD','ceOptionE','ceComment'];
+function richHideBars(){document.querySelectorAll('.rich-bar').forEach(bar=>{bar.hidden=true;bar.style.setProperty('display','none','important')})}
 function richHidePreviews(){richActivePreview='';richRefreshAll()}
 function richActivatePreview(id){
  const ta=$(id);if(!ta||!richIds.includes(id))return;
@@ -252,7 +256,7 @@ document.querySelectorAll('.rich-bar').forEach(bar=>{
   b.addEventListener('mousedown',e=>e.preventDefault());
   b.onclick=()=>b.dataset.undoRich?richUndo(ta):(b.dataset.literalStar?richLiteralStar(ta):richToggle(ta,b.dataset.mark));
  });
- ta.addEventListener('focus',()=>{document.querySelectorAll('.rich-bar').forEach(x=>{x.hidden=x!==bar});const st=richState(ta);st.last=ta.value;richActivatePreview(ta.id)});ta.addEventListener('blur',()=>{bar.hidden=true});bar.hidden=true;
+ ta.addEventListener('focus',()=>{document.querySelectorAll('.rich-bar').forEach(x=>{const active=x===bar;x.hidden=!active;x.style.setProperty('display',active?'flex':'none','important')});const st=richState(ta);st.last=ta.value;richActivatePreview(ta.id)});ta.addEventListener('blur',()=>{bar.hidden=true;bar.style.setProperty('display','none','important')});bar.hidden=true;bar.style.setProperty('display','none','important');
  ta.addEventListener('input',()=>{richTrack(ta);richRefresh(bar.dataset.for)});
  ta.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&String(e.key).toLowerCase()==='z'){
@@ -265,11 +269,11 @@ document.querySelectorAll('.rich-bar').forEach(bar=>{
 });
 ['ceModal','fcModal'].forEach(id=>{
  const modal=$(id);
- new MutationObserver(()=>{if(!modal.hidden)richHidePreviews();else richHidePreviews()}).observe(modal,{attributes:true,attributeFilter:['hidden']});
+ new MutationObserver(()=>{richHideBars();richHidePreviews()}).observe(modal,{attributes:true,attributeFilter:['hidden']});
  modal.addEventListener('focusin',e=>{
   const target=e.target;
   if(target&&richIds.includes(target.id))return;
-  if(target&&target.matches('input,textarea,select,button'))richHidePreviews();
+  if(target&&target.matches('input,textarea,select,button')){if(!richIds.includes(target.id))richHideBars();richHidePreviews();}
  });
  modal.addEventListener('click',e=>{const target=e.target;if(target&&richIds.includes(target.id))richActivatePreview(target.id)});
 });
