@@ -318,3 +318,28 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 
 /* Respeita o atributo hidden nas barras de formatação e prévias. */
 .rich-bar[hidden],.rich-preview[hidden]{display:none!important}
+
+
+/* Dias consecutivos e meta semanal — Painel de desempenho */
+#dashboardPage .dashboard-goals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+#dashboardPage .dashboard-goal{background:#fff;border:1px solid #e2eaf4;border-radius:14px;padding:16px;min-width:0;box-shadow:0 3px 12px #1e3a5f08}
+#dashboardPage .dashboard-goal h3{font-size:15px;margin:0 0 10px;color:#253b56}
+#dashboardPage .streak-value{display:flex;align-items:baseline;gap:8px;font-size:clamp(26px,4vw,34px);font-weight:750;color:#17365f;line-height:1.1}
+#dashboardPage .streak-value .streak-fire{font-size:clamp(24px,3.5vw,30px)}
+#dashboardPage .streak-unit{font-size:14px;font-weight:500;color:#64748b}
+#dashboardPage .streak-record{display:block;margin-top:8px;font-size:12px;color:#64748b}
+#dashboardPage .streak-record strong{color:#253b56}
+#dashboardPage .goal-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+#dashboardPage .goal-row label{font-size:12px;font-weight:600;color:#526173;margin:0}
+#dashboardPage .goal-row input{width:88px;padding:7px 9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:14px;text-align:center}
+#dashboardPage .goal-row input:focus{outline:2px solid #2459a6;outline-offset:1px}
+#dashboardPage .goal-numbers{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:#526173}
+#dashboardPage .goal-numbers strong{font-size:16px;color:#17365f}
+#dashboardPage .goal-track{height:12px;background:#edf2f8;border-radius:99px;overflow:hidden;margin-top:8px}
+#dashboardPage .goal-fill{height:100%;border-radius:99px;transition:width .35s ease,background-color .35s ease}
+#dashboardPage .goal-fill.low{background:#dc2626}
+#dashboardPage .goal-fill.mid{background:#d99b00}
+#dashboardPage .goal-fill.high{background:#16834a}
+#dashboardPage .goal-fill.empty{background:#cbd5e1}
+#dashboardPage .goal-hint{margin-top:8px;font-size:12px;color:#64748b;line-height:1.4}
+@media(max-width:640px){#dashboardPage .dashboard-goals{grid-template-columns:1fr;gap:10px}#dashboardPage .dashboard-goal{padding:14px}}

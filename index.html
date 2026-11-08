@@ -7,6 +7,31 @@
     <button class="alt dashboard-refresh" id="dashboardRefresh" type="button" aria-label="Atualizar painel" title="Atualizar painel"><span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">Atualizar</span></button>
   </div>
   <div class="stats" id="dashboardSummary"></div>
+  <div class="dashboard-goals">
+    <div class="dashboard-goal">
+      <h3><span id="dashboardStreakEmoji" aria-hidden="true">🥶</span> Dias consecutivos</h3>
+      <div class="streak-value">
+        <span class="streak-fire" id="dashboardStreakIcon" aria-hidden="true">🥶</span>
+        <span id="dashboardStreakDays">0</span>
+        <span class="streak-unit" id="dashboardStreakUnit">dias</span>
+      </div>
+      <span class="streak-record" id="dashboardStreakRecord">Recorde: <strong>0 dias</strong></span>
+      <div class="goal-hint" id="dashboardStreakHint">Estude pelo menos uma sessão por dia para manter sua sequência.</div>
+    </div>
+    <div class="dashboard-goal">
+      <h3>🎯 Meta semanal</h3>
+      <div class="goal-row">
+        <label for="dashboardGoalHours">Horas por semana</label>
+        <input id="dashboardGoalHours" type="number" min="0" max="168" step="0.5" inputmode="decimal" placeholder="0" aria-label="Meta de horas por semana">
+      </div>
+      <div class="goal-numbers">
+        <span><strong id="dashboardGoalDone">0h</strong> estudadas</span>
+        <span id="dashboardGoalPct">—</span>
+      </div>
+      <div class="goal-track" aria-hidden="true"><div class="goal-fill empty" id="dashboardGoalFill" style="width:0%"></div></div>
+      <div class="goal-hint" id="dashboardGoalHint">Defina uma meta para acompanhar seu progresso nos últimos 7 dias.</div>
+    </div>
+  </div>
   <div class="dashboard-panels">
     <div class="dashboard-panel"><h3>Questões por dia · últimos 7 dias</h3><div id="dashboardDaily"></div></div>
     <div class="dashboard-panel"><h3>Desempenho por matéria</h3><div id="dashboardSubjects"></div></div>

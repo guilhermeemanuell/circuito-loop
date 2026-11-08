@@ -82,6 +82,41 @@ function renderDashboard(){
   const duration=sec=>{sec=Math.max(0,Math.floor(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?`${h}h ${m}min`:`${m} min`};
   const box=(value,label)=>`<div class="stat"><b>${value}</b><span>${label}</span></div>`;
   $('dashboardSummary').innerHTML=box(sessions.length,'Sessões registradas')+box(duration(totalSec),'Tempo total estudado')+box(totalQ.toLocaleString('pt-BR'),'Questões respondidas')+box(totalQ?pct+'%':'—','Aproveitamento geral');
+
+  // Dias consecutivos: considera dias locais com ao menos uma sessão salva.
+  const dayKey=date=>{const d=new Date(date);if(Number.isNaN(d.getTime()))return '';return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+  const studiedDays=[...new Set(sessions.map(r=>dayKey(r.date)).filter(Boolean))].sort();
+  const dayOrdinal=key=>{const [y,m,d]=key.split('-').map(Number);return Math.floor(Date.UTC(y,m-1,d)/86400000)};
+  let recordStreak=0,run=0,previous=null;
+  studiedDays.forEach(key=>{const ordinal=dayOrdinal(key);run=previous!==null&&ordinal===previous+1?run+1:1;recordStreak=Math.max(recordStreak,run);previous=ordinal});
+  const todayKey=dayKey(new Date()),todayOrdinal=dayOrdinal(todayKey);
+  const lastOrdinal=studiedDays.length?dayOrdinal(studiedDays[studiedDays.length-1]):null;
+  let currentStreak=0;
+  if(lastOrdinal!==null&&(lastOrdinal===todayOrdinal||lastOrdinal===todayOrdinal-1)){
+    currentStreak=1;let cursor=lastOrdinal;
+    for(let i=studiedDays.length-2;i>=0;i--){const ordinal=dayOrdinal(studiedDays[i]);if(ordinal===cursor-1){currentStreak++;cursor=ordinal}else if(ordinal<cursor-1)break}
+  }
+  const streakEmoji=currentStreak<=5?'🥶':currentStreak<=10?'🤓':currentStreak<=15?'🥵':'🔥';
+  $('dashboardStreakEmoji').textContent=streakEmoji;$('dashboardStreakIcon').textContent=streakEmoji;
+  $('dashboardStreakDays').textContent=currentStreak;$('dashboardStreakUnit').textContent=currentStreak===1?'dia':'dias';
+  $('dashboardStreakRecord').innerHTML=`Recorde: <strong>${recordStreak} ${recordStreak===1?'dia':'dias'}</strong>`;
+  $('dashboardStreakHint').textContent=currentStreak===0?'O streak foi interrompido. Estude hoje para começar um novo.':lastOrdinal===todayOrdinal?'Você já estudou hoje. Continue assim!':'Estude hoje para manter sua sequência.';
+
+  // Meta semanal configurável, calculada sobre as últimas 168 horas.
+  const weeklyGoalKey='circuitoLoop.weeklyGoalHours.v1';
+  let weeklyGoal=0;try{weeklyGoal=Math.max(0,Math.min(168,Number(localStorage.getItem(weeklyGoalKey))||0))}catch(e){}
+  const goalInput=$('dashboardGoalHours');if(goalInput){goalInput.value=weeklyGoal||'';goalInput.onchange=()=>{const value=Math.max(0,Math.min(168,Number(goalInput.value)||0));weeklyGoal=value;try{localStorage.setItem(weeklyGoalKey,String(value))}catch(e){};updateWeeklyGoal()};goalInput.oninput=()=>{const value=Math.max(0,Math.min(168,Number(goalInput.value)||0));weeklyGoal=value;updateWeeklyGoal()}}
+  const weekStart=Date.now()-7*86400000;
+  const weeklySec=sessions.reduce((sum,r)=>{const d=new Date(r.date).getTime();return sum+(Number.isFinite(d)&&d>=weekStart&&d<=Date.now()?Math.max(0,num(r.sec)):0)},0);
+  const weeklyHours=weeklySec/3600;
+  function updateWeeklyGoal(){
+    const done=$('dashboardGoalDone'),pctEl=$('dashboardGoalPct'),fill=$('dashboardGoalFill'),hint=$('dashboardGoalHint');
+    done.textContent=(weeklyHours>=10?Math.round(weeklyHours):weeklyHours.toFixed(1).replace('.',','))+'h';
+    if(!weeklyGoal){pctEl.textContent='—';fill.className='goal-fill empty';fill.style.width='0%';hint.textContent='Defina uma meta para acompanhar seu progresso nos últimos 7 dias.';return}
+    const percent=Math.min(100,Math.round(weeklyHours/weeklyGoal*100));pctEl.textContent=percent+'%';fill.className='goal-fill '+(percent<50?'low':percent<100?'mid':'high');fill.style.width=percent+'%';
+    const remaining=Math.max(0,weeklyGoal-weeklyHours);hint.textContent=remaining>0?`Faltam ${remaining.toFixed(1).replace('.',',')}h para bater a meta (janela de 7 dias).`:`Meta batida! 🎉 Você estudou ${weeklyHours.toFixed(1).replace('.',',')}h nas últimas 168h.`;
+  }
+  updateWeeklyGoal();
   const today=new Date();today.setHours(0,0,0,0);
   const days=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(today.getDate()-(6-i));return d});
   const daily=days.map(d=>{const key=d.toDateString();const rows=sessions.filter(r=>{const x=new Date(r.date);return !isNaN(x)&&x.toDateString()===key});return {d,q:rows.reduce((a,r)=>a+num(r.q),0),sec:rows.reduce((a,r)=>a+num(r.sec),0)}});
@@ -614,14 +649,17 @@ render();renderCircuitChoices();if(selectedCircuit){const activeSaved=circuits.f
 /* ===== Sincronização entre dispositivos (arquivo JSON em um repositório do GitHub) ===== */
 (()=>{
 const CFG_KEY='circuitoLoop.sync.config.v1',ST_KEY='circuitoLoop.sync.state.v1',CIRCUITS_KEY='circuitoLoop.circuits.v1';
-const COLS=['records','subjects','circuits','flashcards','caderno'];
-const WATCH={[KEY]:'records',[SUBKEY]:'subjects',[INDEXKEY]:'subjects',[CIRCUITS_KEY]:'circuits',[FCKEY]:'flashcards',[CEKEY]:'caderno'};
+const WEEKLY_GOAL_KEY='circuitoLoop.weeklyGoalHours.v1';
+const COLS=['records','subjects','circuits','flashcards','caderno','settings'];
+const WATCH={[KEY]:'records',[SUBKEY]:'subjects',[INDEXKEY]:'subjects',[CIRCUITS_KEY]:'circuits',[FCKEY]:'flashcards',[CEKEY]:'caderno',[WEEKLY_GOAL_KEY]:'settings'};
 const J=JSON.stringify,same=(a,b)=>J(a)===J(b);
-const emptyData=()=>({records:[],subjects:{list:[],index:0},circuits:[],flashcards:[],caderno:[]});
+const emptyData=()=>({records:[],subjects:{list:[],index:0},circuits:[],flashcards:[],caderno:[],settings:{weeklyGoalHours:0}});
 const readJSON=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return v==null?d:v}catch(e){return d}};
 let cfg=readJSON(CFG_KEY,null),st=readJSON(ST_KEY,null)||{};
 if(!st.base)st.base=emptyData();
 if(!st.changedAt)st.changedAt={};
+/* Migração v63: a meta semanal era local. Se já havia uma meta neste aparelho, marca-a como alteração local para enviá-la na próxima sincronização. */
+if(!st.base.settings){st.base.settings={weeklyGoalHours:0};const legacyGoal=Math.max(0,Math.min(168,Number(localStorage.getItem(WEEKLY_GOAL_KEY))||0));if(legacyGoal>0){st.changedAt.settings=Date.now();st.dirty=true}}
 /* Tombstones: exclusões persistentes, compartilhadas entre dispositivos. */
 if(!st.tombstones||typeof st.tombstones!=='object')st.tombstones={};
 let applying=false,busy=false,again=false,timer=null,lastError='',authFail=false;
@@ -629,7 +667,7 @@ const persist=()=>{try{localStorage.setItem(ST_KEY,J(st))}catch(e){}};
 
 /* ---------- Estado local ---------- */
 const normRecords=a=>a.filter(r=>r&&typeof r==='object').map(r=>({...r,notes:r.notes||''}));
-const snap=()=>JSON.parse(J({records:normRecords(records),subjects:{list:subjects,index:currentIndex},circuits,flashcards,caderno:cadernoErradas}));
+const snap=()=>JSON.parse(J({records:normRecords(records),subjects:{list:subjects,index:currentIndex},circuits,flashcards,caderno:cadernoErradas,settings:{weeklyGoalHours:Math.max(0,Math.min(168,Number(localStorage.getItem(WEEKLY_GOAL_KEY))||0))}}));
 
 /* ---------- Interface ---------- */
 const btn=$('syncOpen');
@@ -687,13 +725,13 @@ async function ghPut(obj,sha){
 }
 
 /* ---------- Formato do arquivo (compatível com o "Backup JSON") ---------- */
-function toRemote(m,ts,tombstones){return{app:'circuito-loop',version:6,records:m.records,subjects:m.subjects.list,currentIndex:m.subjects.index,circuits:m.circuits,flashcards:m.flashcards,cadernoErradas:m.caderno,sync:{updatedAt:new Date().toISOString(),changedAt:ts,tombstones:tombstones||{}}}}
+function toRemote(m,ts,tombstones){return{app:'circuito-loop',version:7,records:m.records,subjects:m.subjects.list,currentIndex:m.subjects.index,circuits:m.circuits,flashcards:m.flashcards,cadernoErradas:m.caderno,settings:{weeklyGoalHours:m.settings?.weeklyGoalHours||0},sync:{updatedAt:new Date().toISOString(),changedAt:ts,tombstones:tombstones||{}}}}
 function fromRemote(d){
   if(!d||typeof d!=='object'||Array.isArray(d)||!(d.app==='circuito-loop'||Array.isArray(d.records)))throw new Error('O arquivo “'+cfg.path+'” não parece ser dos dados do Circuito Loop. Escolha outro nome de arquivo para não sobrescrevê-lo.');
   const arr=x=>Array.isArray(x)?x:[];
   const list=arr(d.subjects).filter(s=>typeof s==='string'&&s.trim());
   const index=list.length?Math.max(0,Math.min(Math.floor(Number(d.currentIndex))||0,list.length-1)):0;
-  return{data:{records:normRecords(arr(d.records)),subjects:{list,index},circuits:arr(d.circuits).filter(x=>x&&x.id&&Array.isArray(x.subjects)),flashcards:arr(d.flashcards).filter(x=>x&&x.id),caderno:arr(d.cadernoErradas).filter(x=>x&&x.id)},changedAt:(d.sync&&d.sync.changedAt)||{},tombstones:(d.sync&&d.sync.tombstones)||{}};
+  return{data:{records:normRecords(arr(d.records)),subjects:{list,index},circuits:arr(d.circuits).filter(x=>x&&x.id&&Array.isArray(x.subjects)),flashcards:arr(d.flashcards).filter(x=>x&&x.id),caderno:arr(d.cadernoErradas).filter(x=>x&&x.id),settings:{weeklyGoalHours:Math.max(0,Math.min(168,Number(d.settings&&d.settings.weeklyGoalHours)||0))}},changedAt:(d.sync&&d.sync.changedAt)||{},tombstones:(d.sync&&d.sync.tombstones)||{}};
 }
 
 /* ---------- Mesclagem em três vias: último estado sincronizado × local × remoto ---------- */
@@ -727,7 +765,7 @@ function mergeScalar(b,l,r,localNewer){
 function mergeAll(b0,l0,r0,rts,remoteTombstones){
   /* Registra exclusões locais comparando a última base comum com o estado atual. */
   const tombstones=JSON.parse(J(st.tombstones||{}));
-  COLS.filter(c=>c!=='subjects').forEach(col=>{
+  COLS.filter(c=>c!=='subjects'&&c!=='settings').forEach(col=>{
     const before=keyed(col,b0[col]||[]),now=keyed(col,l0[col]||[]);
     if(!tombstones[col])tombstones[col]={};
     before.forEach((value,key)=>{if(!now.has(key))tombstones[col][key]=Math.max(tombstones[col][key]||0,Date.now())});
@@ -736,9 +774,10 @@ function mergeAll(b0,l0,r0,rts,remoteTombstones){
   st.tombstones=tombstones;persist();
   const newer=col=>(st.changedAt[col]||0)>=(rts[col]||0);
   const pick=col=>(l,r)=>(col==='flashcards'&&Number.isFinite(l.due)&&Number.isFinite(r.due)&&l.due!==r.due)?(l.due>r.due?l:r):(newer(col)?l:r);
-  const m={records:null,subjects:null,circuits:null,flashcards:null,caderno:null}; /* mesma ordem de chaves de snap()/fromRemote(), pois same() compara JSON */
+  const m={records:null,subjects:null,circuits:null,flashcards:null,caderno:null,settings:null}; /* mesma ordem de chaves de snap()/fromRemote(), pois same() compara JSON */
   ['records','circuits','flashcards','caderno'].forEach(col=>{m[col]=mergeKeyed(col,b0[col],l0[col],r0[col],pick(col))});
   m.subjects=mergeScalar(b0.subjects,l0.subjects,r0.subjects,newer('subjects'));
+  m.settings=mergeScalar(b0.settings||{weeklyGoalHours:0},l0.settings||{weeklyGoalHours:0},r0.settings||{weeklyGoalHours:0},newer('settings'));
   /* Uma exclusão explícita prevalece sobre cópias antigas em qualquer aparelho. */
   ['records','circuits','flashcards','caderno'].forEach(col=>{
     const deleted=tombstones[col]||{},kept=[];
@@ -762,6 +801,7 @@ function apply(m){
     if(!same(cur.circuits,m.circuits)){circuits=m.circuits;localStorage.setItem(CIRCUITS_KEY,J(circuits));renderCircuitChoices()}
     if(!same(cur.flashcards,m.flashcards)){flashcards=m.flashcards;fcSave()}
     if(!same(cur.caderno,m.caderno)){cadernoErradas=m.caderno;ceSave()}
+    if(!same(cur.settings,m.settings)){localStorage.setItem(WEEKLY_GOAL_KEY,String(Math.max(0,Math.min(168,Number(m.settings?.weeklyGoalHours)||0))));if(typeof renderDashboard==='function'&&$('dashboardPage')&&!$('dashboardPage').hidden)renderDashboard()}
   }finally{applying=false}
 }
 
