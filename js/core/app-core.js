@@ -618,6 +618,8 @@ const readJSON=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');r
 let cfg=readJSON(CFG_KEY,null),st=readJSON(ST_KEY,null)||{};
 if(!st.base)st.base=emptyData();
 if(!st.changedAt)st.changedAt={};
+/* Tombstones: exclusões persistentes, compartilhadas entre dispositivos. */
+if(!st.tombstones||typeof st.tombstones!=='object')st.tombstones={};
 let applying=false,busy=false,again=false,timer=null,lastError='',authFail=false;
 const persist=()=>{try{localStorage.setItem(ST_KEY,J(st))}catch(e){}};
 
@@ -681,13 +683,13 @@ async function ghPut(obj,sha){
 }
 
 /* ---------- Formato do arquivo (compatível com o "Backup JSON") ---------- */
-function toRemote(m,ts){return{app:'circuito-loop',version:5,records:m.records,subjects:m.subjects.list,currentIndex:m.subjects.index,circuits:m.circuits,flashcards:m.flashcards,cadernoErradas:m.caderno,sync:{updatedAt:new Date().toISOString(),changedAt:ts}}}
+function toRemote(m,ts,tombstones){return{app:'circuito-loop',version:6,records:m.records,subjects:m.subjects.list,currentIndex:m.subjects.index,circuits:m.circuits,flashcards:m.flashcards,cadernoErradas:m.caderno,sync:{updatedAt:new Date().toISOString(),changedAt:ts,tombstones:tombstones||{}}}}
 function fromRemote(d){
   if(!d||typeof d!=='object'||Array.isArray(d)||!(d.app==='circuito-loop'||Array.isArray(d.records)))throw new Error('O arquivo “'+cfg.path+'” não parece ser dos dados do Circuito Loop. Escolha outro nome de arquivo para não sobrescrevê-lo.');
   const arr=x=>Array.isArray(x)?x:[];
   const list=arr(d.subjects).filter(s=>typeof s==='string'&&s.trim());
   const index=list.length?Math.max(0,Math.min(Math.floor(Number(d.currentIndex))||0,list.length-1)):0;
-  return{data:{records:normRecords(arr(d.records)),subjects:{list,index},circuits:arr(d.circuits).filter(x=>x&&x.id&&Array.isArray(x.subjects)),flashcards:arr(d.flashcards).filter(x=>x&&x.id),caderno:arr(d.cadernoErradas).filter(x=>x&&x.id)},changedAt:(d.sync&&d.sync.changedAt)||{}};
+  return{data:{records:normRecords(arr(d.records)),subjects:{list,index},circuits:arr(d.circuits).filter(x=>x&&x.id&&Array.isArray(x.subjects)),flashcards:arr(d.flashcards).filter(x=>x&&x.id),caderno:arr(d.cadernoErradas).filter(x=>x&&x.id)},changedAt:(d.sync&&d.sync.changedAt)||{},tombstones:(d.sync&&d.sync.tombstones)||{}};
 }
 
 /* ---------- Mesclagem em três vias: último estado sincronizado × local × remoto ---------- */
@@ -718,12 +720,27 @@ function mergeScalar(b,l,r,localNewer){
   if(!rc)return l;if(!lc)return r;if(same(l,r))return l;
   return localNewer?l:r;
 }
-function mergeAll(b0,l0,r0,rts){
+function mergeAll(b0,l0,r0,rts,remoteTombstones){
+  /* Registra exclusões locais comparando a última base comum com o estado atual. */
+  const tombstones=JSON.parse(J(st.tombstones||{}));
+  COLS.filter(c=>c!=='subjects').forEach(col=>{
+    const before=keyed(col,b0[col]||[]),now=keyed(col,l0[col]||[]);
+    if(!tombstones[col])tombstones[col]={};
+    before.forEach((value,key)=>{if(!now.has(key))tombstones[col][key]=Math.max(tombstones[col][key]||0,Date.now())});
+    Object.assign(tombstones[col],remoteTombstones&&remoteTombstones[col]||{});
+  });
+  st.tombstones=tombstones;persist();
   const newer=col=>(st.changedAt[col]||0)>=(rts[col]||0);
   const pick=col=>(l,r)=>(col==='flashcards'&&Number.isFinite(l.due)&&Number.isFinite(r.due)&&l.due!==r.due)?(l.due>r.due?l:r):(newer(col)?l:r);
   const m={records:null,subjects:null,circuits:null,flashcards:null,caderno:null}; /* mesma ordem de chaves de snap()/fromRemote(), pois same() compara JSON */
   ['records','circuits','flashcards','caderno'].forEach(col=>{m[col]=mergeKeyed(col,b0[col],l0[col],r0[col],pick(col))});
   m.subjects=mergeScalar(b0.subjects,l0.subjects,r0.subjects,newer('subjects'));
+  /* Uma exclusão explícita prevalece sobre cópias antigas em qualquer aparelho. */
+  ['records','circuits','flashcards','caderno'].forEach(col=>{
+    const deleted=tombstones[col]||{},kept=[];
+    keyed(col,m[col]).forEach((item,key)=>{if(!deleted[key])kept.push(item)});
+    m[col]=kept;
+  });
   return m;
 }
 
@@ -819,16 +836,16 @@ async function syncNow(manual){
   try{
     for(let i=0;i<3;i++){
       const rem=await ghGet();
-      let remote=null,rts={};
+      let remote=null,rts={},remoteTombstones={};
       if(rem.text&&rem.text.trim()){
         let d;try{d=JSON.parse(rem.text)}catch(e){throw new Error('O arquivo no GitHub não é um JSON válido; nada foi alterado.')}
-        const p=fromRemote(d);remote=p.data;rts=p.changedAt;
+        const p=fromRemote(d);remote=p.data;rts=p.changedAt;remoteTombstones=p.tombstones||{};
       }
-      const local=snap(),prevBase=st.base,merged=remote?mergeAll(st.base,local,remote,rts):local;
+      const local=snap(),prevBase=st.base,merged=remote?mergeAll(st.base,local,remote,rts,remoteTombstones):mergeAll(st.base,local,local,rts,remoteTombstones);
       if(window.CircuitoImg)await syncImages(merged);
       const ts={};COLS.forEach(c=>{ts[c]=Math.max(st.changedAt[c]||0,rts[c]||0)});
-      if(!remote||!same(remote,merged)){
-        try{await ghPut(toRemote(merged,ts),rem.sha)}catch(e){if((e.status===409||e.status===422)&&i<2)continue;throw e}
+      if(!remote||!same(remote,merged)||!same(remoteTombstones,st.tombstones)){
+        try{await ghPut(toRemote(merged,ts,st.tombstones),rem.sha)}catch(e){if((e.status===409||e.status===422)&&i<2)continue;throw e}
       }
       if(window.CircuitoImg)await archiveUnusedImages(merged,[prevBase,remote,local]).catch(()=>{});   /* depois de publicar o JSON; falha aqui não quebra a sincronização */
       if(same(snap(),local)){apply(merged);st.base=snap();st.changedAt=ts;st.dirty=false}
