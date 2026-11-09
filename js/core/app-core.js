@@ -472,18 +472,24 @@ function ceRenderReview(){
  $('ceCount').textContent=items.length+' '+(items.length===1?'questão':'questões')+(ceTimeLimitSec&&!ceShowingResult?' · Tempo restante '+String(Math.floor(Math.max(0,ceTimeLimitSec-ceElapsed())/60)).padStart(2,'0')+':'+String(Math.max(0,ceTimeLimitSec-ceElapsed())%60).padStart(2,'0'):'');
  if(!items.length){review.innerHTML='<p class="muted">Nenhuma questão cadastrada nesta matéria.</p>';$('ceReveal').hidden=true;$('ceFinish').hidden=false;return}
  if(ceShowingResult){
-  const total=ceCorrectCount+ceWrongCount;
-  const correctPct=total?Math.round(ceCorrectCount/total*100):0;
-  const wrongPct=total?100-correctPct:0;
+  const total=items.length;
+  const isSimulado=ceActiveSubject===CE_ALL;
+  const blank=isSimulado?Math.max(0,total-ceAnsweredCount):0;
+  const denominator=isSimulado?total:(ceCorrectCount+ceWrongCount);
+  const correctPct=denominator?Math.round(ceCorrectCount/denominator*100):0;
+  const wrongPct=denominator?Math.round(ceWrongCount/denominator*100):0;
+  const blankPct=denominator?Math.max(0,100-correctPct-wrongPct):0;
   review.innerHTML='';
   const title=document.createElement('h3');title.className='ce-result-title';title.textContent='Resultado';title.style.margin='0 0 16px';review.appendChild(title);
   const chartWrap=document.createElement('div');chartWrap.style.display='flex';chartWrap.style.flexDirection='column';chartWrap.style.alignItems='center';chartWrap.style.gap='16px';
-  const chart=document.createElement('div');chart.style.width='190px';chart.style.height='190px';chart.style.borderRadius='50%';chart.style.background='conic-gradient(#009B00 0% '+correctPct+'%, #B60020 '+correctPct+'% 100%)';chart.style.position='relative';chart.setAttribute('aria-label','Gráfico de respostas ('+total+' '+(total===1?'questão':'questões')+'): '+correctPct+'% certas e '+wrongPct+'% erradas');
+  const chart=document.createElement('div');chart.style.width='190px';chart.style.height='190px';chart.style.borderRadius='50%';const wrongEnd=correctPct+wrongPct;chart.style.background='conic-gradient(#009B00 0% '+correctPct+'%, #B60020 '+correctPct+'% '+wrongEnd+'%, #94a3b8 '+wrongEnd+'% 100%)';chart.style.position='relative';chart.setAttribute('aria-label','Gráfico de respostas ('+total+' '+(total===1?'questão':'questões')+'): '+correctPct+'% certas, '+wrongPct+'% erradas e '+blankPct+'% em branco');
   const hole=document.createElement('div');hole.style.position='absolute';hole.style.inset='42px';hole.style.borderRadius='50%';hole.style.background='var(--card-bg, #fff)';hole.style.display='flex';hole.style.alignItems='center';hole.style.justifyContent='center';hole.style.fontWeight='700';hole.style.fontSize='24px';hole.className='ce-hole-count';hole.textContent=String(total);chart.appendChild(hole);chartWrap.appendChild(chart);
   const legend=document.createElement('div');legend.style.display='grid';legend.style.gap='8px';legend.style.width='100%';legend.style.maxWidth='280px';
   const correct=document.createElement('div');correct.style.display='flex';correct.style.justifyContent='space-between';correct.innerHTML='<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#009B00;margin-right:8px"></span>Certas</span><strong>'+ceCorrectCount+' ('+correctPct+'%)</strong>';
   const wrong=document.createElement('div');wrong.style.display='flex';wrong.style.justifyContent='space-between';wrong.innerHTML='<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#B60020;margin-right:8px"></span>Erradas</span><strong>'+ceWrongCount+' ('+wrongPct+'%)</strong>';
-  legend.append(correct,wrong);chartWrap.appendChild(legend);review.appendChild(chartWrap);if(ceSavedNote){const sn=document.createElement('p');sn.className='note';sn.style.textAlign='center';sn.style.marginTop='14px';sn.textContent=ceSavedNote;review.appendChild(sn)}
+  legend.append(correct,wrong);
+  if(isSimulado){const blankRow=document.createElement('div');blankRow.style.display='flex';blankRow.style.justifyContent='space-between';blankRow.innerHTML='<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#94a3b8;margin-right:8px"></span>Em branco</span><strong>'+blank+' ('+blankPct+'%)</strong>';legend.appendChild(blankRow)}
+  chartWrap.appendChild(legend);review.appendChild(chartWrap);if(ceSavedNote){const sn=document.createElement('p');sn.className='note';sn.style.textAlign='center';sn.style.marginTop='14px';sn.textContent=ceSavedNote;review.appendChild(sn)}
   $('ceFinish').hidden=true;$('ceReveal').hidden=false;$('ceReveal').textContent='Fechar resultado';$('ceReveal').style.flex='0 0 33.333%';$('ceReveal').style.minWidth='0';
   return;
  }
@@ -514,7 +520,10 @@ function ceRenderReview(){
 }
 
 let ceSavedNote='',ceTimeAcc=0,ceTimeStart=0,ceTimeLimitSec=0,ceDeadlineTimer=null,ceTimedOut=false,ceRequestedCount=0,ceRequestedMinutes=0;
-function ceTimerReset(limit=0){clearInterval(ceDeadlineTimer);ceTimeLimitSec=Math.max(0,Number(limit)||0);ceTimedOut=false;ceTimeAcc=0;ceTimeStart=document.hidden?0:Date.now();if(ceTimeLimitSec){ceDeadlineTimer=setInterval(()=>{const elapsed=ceElapsed();const left=Math.max(0,ceTimeLimitSec-elapsed);const label=$('ceCount');if(label)label.textContent=ceReviewItems().length+' questões · Tempo restante '+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');if(!ceShowingResult&&ceActiveSubject&&elapsed>=ceTimeLimitSec){ceTimedOut=true;ceTimeAcc=ceTimeLimitSec*1000;ceTimeStart=0;clearInterval(ceDeadlineTimer);ceShowResult(true)}},250)}}
+function ceCountdownText(seconds){const n=Math.max(0,Math.floor(seconds));return [Math.floor(n/3600),Math.floor(n%3600/60),n%60].map(v=>String(v).padStart(2,'0')).join(':')}
+function ceEnsureCountdown(){let el=$('ceSimCountdown');if(!el){el=document.createElement('div');el.id='ceSimCountdown';el.className='clock';el.style.cssText='text-align:center;font-size:clamp(44px,8vw,68px);font-weight:750;font-variant-numeric:tabular-nums;margin:12px';const heading=$('ceStudyHeading');if(heading&&heading.parentElement&&heading.parentElement.parentElement)heading.parentElement.parentElement.insertBefore(el,heading.parentElement)}el.hidden=ceActiveSubject!==CE_ALL;return el}
+function ceUpdateCountdown(){const el=$('ceSimCountdown');if(!el)return;el.hidden=ceActiveSubject!==CE_ALL;if(!el.hidden)el.textContent=ceCountdownText(Math.max(0,ceTimeLimitSec-ceElapsed()))}
+function ceTimerReset(limit=0){clearInterval(ceDeadlineTimer);ceTimeLimitSec=Math.max(0,Number(limit)||0);ceTimedOut=false;ceTimeAcc=0;ceTimeStart=document.hidden?0:Date.now();ceUpdateCountdown();if(ceTimeLimitSec){ceDeadlineTimer=setInterval(()=>{const elapsed=ceElapsed();const left=Math.max(0,ceTimeLimitSec-elapsed);const label=$('ceCount');if(label)label.textContent=ceReviewItems().length+' questões · Tempo restante '+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');ceUpdateCountdown();if(!ceShowingResult&&ceActiveSubject&&elapsed>=ceTimeLimitSec){ceTimedOut=true;ceTimeAcc=ceTimeLimitSec*1000;ceTimeStart=0;clearInterval(ceDeadlineTimer);ceShowResult(true)}},250)}}
 function ceElapsed(){return Math.max(0,Math.round((ceTimeAcc+(ceTimeStart?Date.now()-ceTimeStart:0))/1000))}
 document.addEventListener('visibilitychange',()=>{
  if(ceShowingResult||!ceActiveSubject)return;
@@ -531,17 +540,20 @@ function ceCanonSubject(name){
 }
 function ceShowResult(){
  if(ceShowingResult)return;
- const total=ceCorrectCount+ceWrongCount;
+ const all=ceReviewItems().length;
+ const isSimulado=ceActiveSubject===CE_ALL;
+ const blank=isSimulado?Math.max(0,all-ceAnsweredCount):0;
+ const countedQuestions=isSimulado?all:(ceCorrectCount+ceWrongCount);
  ceSavedNote='';
- if(total>0||ceTimedOut){
-  const sec=ceElapsed();ceTimeAcc=sec*1000;ceTimeStart=0;
-  records.unshift({date:new Date().toISOString(),subject:ceCanonSubject(ceActiveSubject),sec,q:total,c:ceCorrectCount,source:'errors',notes:'Caderno de Erradas'});
+ if(ceCorrectCount+ceWrongCount>0||ceTimedOut){
+  const sec=ceElapsed();ceTimeAcc=sec*1000;ceTimeStart=0;clearInterval(ceDeadlineTimer);ceDeadlineTimer=null;
+  records.unshift({date:new Date().toISOString(),subject:ceCanonSubject(ceActiveSubject),sec,q:countedQuestions,c:ceCorrectCount,source:'errors',notes:'Caderno de Erradas'+(isSimulado?' · Certas: '+ceCorrectCount+'; Erradas: '+ceWrongCount+'; Em branco: '+blank:'')});
   save();
-  const all=ceReviewItems().length;
-  ceSavedNote='Resultado registrado no Resumo geral e no Histórico ('+total+' de '+all+' '+(all===1?'questão respondida':'questões respondidas')+', tempo '+fmt(sec)+').';
+  ceSavedNote='Resultado registrado no Resumo geral e no Histórico ('+ceAnsweredCount+' de '+all+' '+(all===1?'questão respondida':'questões respondidas')+', tempo '+fmt(sec)+').';
+  if(isSimulado&&blank)ceSavedNote+=' As questões em branco foram contabilizadas como incorretas no aproveitamento.';
   if(ceActiveSubject===CE_ALL&&ceSimCycleCompleted)ceSavedNote+=' Ciclo concluído! Todas as questões foram acertadas e o Simuladão foi reiniciado.';
  }
- ceShowingResult=true;ceRenderReview();
+ ceShowingResult=true;ceUpdateCountdown();ceRenderReview();
 }
 function ceFinishEarly(){
  if(ceShowingResult)return;
@@ -556,9 +568,9 @@ function ceOpenStudy(subject,options={}){
  ceRequestedCount=subject===CE_ALL?Math.max(0,Math.floor(Number(options.count)||0)):0;
  ceRequestedMinutes=subject===CE_ALL?Math.max(0,Math.floor(Number(options.minutes)||0)):0;
  ceTimerReset(ceRequestedMinutes*60);ceSimCycleCompleted=false;ceActiveSubject=subject;ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();$('ceStudyHeading').textContent=subject===CE_ALL?'Simuladão — todas as matérias':subject===CE_EXCEPT?'Todas menos... — questões selecionadas':'Revisar: '+subject;$('ceWorkspace').hidden=false;
- $('ceStudyMount').appendChild($('ceWorkspace'));$('ceStudyModal').hidden=false;ceRenderReview();
+ $('ceStudyMount').appendChild($('ceWorkspace'));$('ceStudyModal').hidden=false;if(subject===CE_ALL){ceEnsureCountdown();ceUpdateCountdown()}else{const timer=$('ceSimCountdown');if(timer)timer.hidden=true}ceRenderReview();
 }
-$('ceStudyClose').onclick=()=>{$('ceStudyModal').hidden=true;ceTimerReset();ceRequestedCount=0;ceRequestedMinutes=0;ceQueue=[];ceActiveSubject='';ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;$('errorsPage').appendChild($('ceWorkspace'));$('ceWorkspace').hidden=true;ceRender()};
+$('ceStudyClose').onclick=()=>{$('ceStudyModal').hidden=true;ceTimerReset();const countdown=$('ceSimCountdown');if(countdown)countdown.hidden=true;ceRequestedCount=0;ceRequestedMinutes=0;ceQueue=[];ceActiveSubject='';ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;$('errorsPage').appendChild($('ceWorkspace'));$('ceWorkspace').hidden=true;ceRender()};
 
 function ceStatsRender(){
  const tot=$('ceStatTotal'),mon=$('ceStatMonths');if(!tot||!mon)return;
