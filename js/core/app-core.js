@@ -73,7 +73,10 @@ let savedAppPage='study';try{savedAppPage=localStorage.getItem(APP_PAGE_KEY)||'s
 
 function renderDashboard(){
   const safeRead=(key)=>{try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}};
-  const sessions=safeRead('circuitoLoop.v1'),cards=safeRead('circuitoLoop.flashcards.v1'),questions=safeRead('circuitoLoop.cadernoErradas.v1');
+  const allSessions=safeRead('circuitoLoop.v1'),cards=safeRead('circuitoLoop.flashcards.v1'),questions=safeRead('circuitoLoop.cadernoErradas.v1');
+  // Resumos semanais são registros informativos: permanecem no Histórico, mas nunca entram nos totais ou gráficos.
+  const isWeeklySummary=r=>String(r?.subject||'').trim().toLocaleLowerCase('pt-BR')==='resumo semanal'||/\[resumo-semanal:\d{4}-\d{2}-\d{2}\]/i.test(String(r?.notes||''));
+  const sessions=allSessions.filter(r=>!isWeeklySummary(r));
   const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
   const totalSec=sessions.reduce((a,r)=>a+Math.max(0,num(r.sec)),0);
   const totalQ=sessions.reduce((a,r)=>a+Math.max(0,num(r.q)),0);
@@ -131,7 +134,7 @@ function renderDashboard(){
   const prevStart=new Date(weekStart);prevStart.setDate(prevStart.getDate()-7);
   const prevRows=sessions.filter(r=>{const d=new Date(r.date);return !Number.isNaN(d.getTime())&&d>=prevStart&&d<=completedEnd});
   const weekTag=`[resumo-semanal:${prevStart.getFullYear()}-${String(prevStart.getMonth()+1).padStart(2,'0')}-${String(prevStart.getDate()).padStart(2,'0')}]`;
-  if(prevRows.length&&!sessions.some(r=>String(r.notes||'').includes(weekTag))){
+  if(prevRows.length&&!allSessions.some(r=>isWeeklySummary(r)&&String(r.notes||'').includes(weekTag))){
     const sec=prevRows.reduce((a,r)=>a+Math.max(0,num(r.sec)),0),q=prevRows.reduce((a,r)=>a+Math.max(0,num(r.q)),0),c=prevRows.reduce((a,r)=>a+Math.max(0,num(r.c)),0);
     const startTxt=dateLabel(prevStart),endTxt=dateLabel(completedEnd);
     records.unshift({date:completedEnd.toISOString(),subject:'Resumo semanal',sec,q,c,notes:`Resumo da semana ${startTxt} a ${endTxt}: ${prevRows.length} sessões, ${q} questões, ${c} acertos e ${(sec/3600).toFixed(1).replace('.',',')} horas estudadas. ${weeklyGoal?`Meta configurada: ${weeklyGoal}h.`:''} ${weekTag}`});
