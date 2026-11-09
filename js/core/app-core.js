@@ -97,50 +97,51 @@ function renderDashboard(){
     for(let i=studiedDays.length-2;i>=0;i--){const ordinal=dayOrdinal(studiedDays[i]);if(ordinal===cursor-1){currentStreak++;cursor=ordinal}else if(ordinal<cursor-1)break}
   }
   const streakEmoji=currentStreak<=5?'🥶':currentStreak<=10?'🤓':currentStreak<=15?'🥵':'🔥';
-  $('dashboardStreakEmoji').textContent=streakEmoji;$('dashboardStreakIcon').textContent=streakEmoji;
+  $('dashboardStreakIcon').textContent=streakEmoji;
   $('dashboardStreakDays').textContent=currentStreak;$('dashboardStreakUnit').textContent=currentStreak===1?'dia':'dias';
   $('dashboardStreakRecord').innerHTML=`Recorde: <strong>${recordStreak} ${recordStreak===1?'dia':'dias'}</strong>`;
-  $('dashboardStreakHint').textContent=currentStreak===0?'O streak foi interrompido. Estude hoje para começar um novo.':lastOrdinal===todayOrdinal?'Você já estudou hoje. Continue assim!':'Estude hoje para manter sua sequência.';
+  const studiedToday=lastOrdinal===todayOrdinal;
+  $('dashboardStreakHint').textContent=currentStreak===0?'O streak foi interrompido. Estude hoje para começar um novo.':studiedToday?'Você já estudou hoje. Continue assim!':'Estude hoje para manter sua sequência.';
+  const nextEl=$('dashboardStreakNext');
+  if(currentStreak>=16)nextEl.textContent='🔥 Você alcançou o nível máximo!';
+  else {const nextLevel=currentStreak<6?6:currentStreak<11?11:16;const remaining=Math.max(0,nextLevel-currentStreak);nextEl.textContent=`Desbloqueie o próximo nível em: ${remaining} ${remaining===1?'dia':'dias'}.`;}
 
-  // Meta semanal configurável, calculada sobre as últimas 168 horas.
+  // Meta semanal: semana civil de domingo a sábado (datas locais).
   const weeklyGoalKey='circuitoLoop.weeklyGoalHours.v1';
   let weeklyGoal=0;try{weeklyGoal=Math.max(0,Math.min(168,Number(localStorage.getItem(weeklyGoalKey))||0))}catch(e){}
   const goalInput=$('dashboardGoalHours'),goalSave=$('dashboardGoalSave'),goalStatus=$('dashboardGoalSaveStatus');
-  if(goalInput){
-    goalInput.value=weeklyGoal||'';
-    goalInput.oninput=()=>{
-      const raw=goalInput.value.trim();
-      weeklyGoal=raw===''?0:Math.max(0,Math.min(168,Number(raw)||0));
-      if(goalStatus)goalStatus.textContent='Alteração não salva';
-      updateWeeklyGoal();
-    };
-  }
-  if(goalSave&&goalInput){
-    goalSave.onclick=()=>{
-      const raw=goalInput.value.trim();
-      const value=raw===''?0:Math.max(0,Math.min(168,Number(raw)||0));
-      weeklyGoal=value;goalInput.value=value||'';
-      try{localStorage.setItem(weeklyGoalKey,String(value));if(goalStatus)goalStatus.textContent='Meta salva neste dispositivo. Sincronização com os demais dispositivos será realizada automaticamente.';}
-      catch(e){if(goalStatus)goalStatus.textContent='Não foi possível salvar a meta neste dispositivo.';}
-      updateWeeklyGoal();
-    };
-  }
-  const weekStart=Date.now()-7*86400000;
-  const weeklySec=sessions.reduce((sum,r)=>{const d=new Date(r.date).getTime();return sum+(Number.isFinite(d)&&d>=weekStart&&d<=Date.now()?Math.max(0,num(r.sec)):0)},0);
+  const weekStart=new Date();weekStart.setHours(0,0,0,0);weekStart.setDate(weekStart.getDate()-weekStart.getDay());
+  const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
+  const dateLabel=d=>d.toLocaleDateString('pt-BR');
+  $('dashboardGoalWeekRange').textContent=`Semana contabilizada: ${dateLabel(weekStart)} a ${dateLabel(weekEnd)}`;
+  const weeklySec=sessions.reduce((sum,r)=>{const d=new Date(r.date);return sum+(!Number.isNaN(d.getTime())&&d>=weekStart&&d<=weekEnd?Math.max(0,num(r.sec)):0)},0);
   const weeklyHours=weeklySec/3600;
+  if(goalInput){goalInput.value=weeklyGoal||'';goalInput.oninput=()=>{if(goalStatus)goalStatus.textContent='Alteração não salva';};}
+  if(goalSave&&goalInput){goalSave.onclick=()=>{const raw=goalInput.value.trim();const value=raw===''?0:Math.max(0,Math.min(168,Number(raw)||0));weeklyGoal=value;goalInput.value=value||'';try{localStorage.setItem(weeklyGoalKey,String(value));if(goalStatus)goalStatus.textContent='Meta salva. Será compartilhada na próxima sincronização com o GitHub.';}catch(e){if(goalStatus)goalStatus.textContent='Não foi possível salvar a meta.';}updateWeeklyGoal();};}
   function updateWeeklyGoal(){
     const done=$('dashboardGoalDone'),pctEl=$('dashboardGoalPct'),fill=$('dashboardGoalFill'),hint=$('dashboardGoalHint');
     done.textContent=(weeklyHours>=10?Math.round(weeklyHours):weeklyHours.toFixed(1).replace('.',','))+'h';
-    if(!weeklyGoal){pctEl.textContent='—';fill.className='goal-fill empty';fill.style.width='0%';hint.textContent='Defina uma meta para acompanhar seu progresso nos últimos 7 dias.';return}
+    if(!weeklyGoal){pctEl.textContent='—';fill.className='goal-fill empty';fill.style.width='0%';hint.textContent='Defina uma meta para acompanhar sua semana (domingo a sábado).';return}
     const percent=Math.min(100,Math.round(weeklyHours/weeklyGoal*100));pctEl.textContent=percent+'%';fill.className='goal-fill '+(percent<50?'low':percent<100?'mid':'high');fill.style.width=percent+'%';
-    const remaining=Math.max(0,weeklyGoal-weeklyHours);hint.textContent=remaining>0?`Faltam ${remaining.toFixed(1).replace('.',',')}h para bater a meta (janela de 7 dias).`:`Meta batida! 🎉 Você estudou ${weeklyHours.toFixed(1).replace('.',',')}h nas últimas 168h.`;
+    const remaining=Math.max(0,weeklyGoal-weeklyHours);hint.textContent=remaining>0?`Faltam ${remaining.toFixed(1).replace('.',',')}h para bater a meta desta semana.`:`Meta batida! 🎉 Você estudou ${weeklyHours.toFixed(1).replace('.',',')}h nesta semana.`;
   }
   updateWeeklyGoal();
+  // Ao abrir a semana seguinte, registra no Histórico o resumo da semana encerrada (uma única vez).
+  const completedEnd=new Date(weekStart);completedEnd.setMilliseconds(-1);
+  const prevStart=new Date(weekStart);prevStart.setDate(prevStart.getDate()-7);
+  const prevRows=sessions.filter(r=>{const d=new Date(r.date);return !Number.isNaN(d.getTime())&&d>=prevStart&&d<=completedEnd});
+  const weekTag=`[resumo-semanal:${prevStart.getFullYear()}-${String(prevStart.getMonth()+1).padStart(2,'0')}-${String(prevStart.getDate()).padStart(2,'0')}]`;
+  if(prevRows.length&&!sessions.some(r=>String(r.notes||'').includes(weekTag))){
+    const sec=prevRows.reduce((a,r)=>a+Math.max(0,num(r.sec)),0),q=prevRows.reduce((a,r)=>a+Math.max(0,num(r.q)),0),c=prevRows.reduce((a,r)=>a+Math.max(0,num(r.c)),0);
+    const startTxt=dateLabel(prevStart),endTxt=dateLabel(completedEnd);
+    records.unshift({date:completedEnd.toISOString(),subject:'Resumo semanal',sec,q,c,notes:`Resumo da semana ${startTxt} a ${endTxt}: ${prevRows.length} sessões, ${q} questões, ${c} acertos e ${(sec/3600).toFixed(1).replace('.',',')} horas estudadas. ${weeklyGoal?`Meta configurada: ${weeklyGoal}h.`:''} ${weekTag}`});
+    localStorage.setItem('circuitoLoop.v1',JSON.stringify(records));
+  }
   const today=new Date();today.setHours(0,0,0,0);
   const days=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(today.getDate()-(6-i));return d});
   const daily=days.map(d=>{const key=d.toDateString();const rows=sessions.filter(r=>{const x=new Date(r.date);return !isNaN(x)&&x.toDateString()===key});return {d,q:rows.reduce((a,r)=>a+num(r.q),0),sec:rows.reduce((a,r)=>a+num(r.sec),0)}});
   const maxQ=Math.max(1,...daily.map(x=>x.q));
-  $('dashboardDaily').innerHTML=daily.map(x=>`<div class="daily-bar"><b class="daily-value">${x.q}</b><div class="daily-track"><div class="daily-fill" style="height:${x.q?Math.max(5,Math.round(x.q/maxQ*100)):0}%"></div></div><span class="daily-label">${x.d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')}</span></div>`).join('')+`<div class="daily-total note">Total: ${daily.reduce((a,x)=>a+x.q,0)} questões · ${duration(daily.reduce((a,x)=>a+x.sec,0))}</div>`;
+  $('dashboardDaily').innerHTML=daily.map(x=>`<div class="daily-bar"><b class="daily-value">${x.q}</b><div class="daily-track">${x.q?`<div class="daily-fill" style="height:${Math.max(5,Math.round(x.q/maxQ*100))}%"></div>`:''}</div><span class="daily-label">${x.d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')}</span></div>`).join('')+`<div class="daily-total note">Total: ${daily.reduce((a,x)=>a+x.q,0)} questões · ${duration(daily.reduce((a,x)=>a+x.sec,0))}</div>`;
   const bySubject=new Map();
   sessions.forEach(r=>{const name=String(r.subject||'Sem matéria');const v=bySubject.get(name)||{q:0,c:0,sec:0};v.q+=num(r.q);v.c+=num(r.c);v.sec+=num(r.sec);bySubject.set(name,v)});
   const subjectRows=[...bySubject.entries()].sort((a,b)=>b[1].q-a[1].q).slice(0,8);
@@ -433,6 +434,17 @@ function ceBuildQueue(){
   /* No Simuladão, questões acertadas ficam fora do ciclo atual. O estado é salvo no próprio cadastro
    da questão para acompanhar a sincronização e não interfere nas revisões por matéria/Todas menos. */
   if(ceActiveSubject===CE_ALL){ceSimuladoNormalizeCycle();pool=pool.filter(c=>!c.simuladoCycleCorrect)}
+  if(ceActiveSubject===CE_ALL&&ceRequestedCount>0&&pool.length>ceRequestedCount){
+    const groups=new Map();pool.forEach(q=>{const k=String(q.subject||'Sem matéria');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(q)});
+    const shuffleItems=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+    groups.forEach(a=>shuffleItems(a));
+    const chosen=[];let remaining=Math.min(ceRequestedCount,pool.length);
+    while(remaining>0){const available=[...groups.entries()].filter(([,a])=>a.length);if(!available.length)break;const base=Math.floor(remaining/available.length);let allocated=0;
+      if(base>0){available.forEach(([,a])=>{const take=Math.min(base,a.length);for(let i=0;i<take;i++)chosen.push(a.pop());allocated+=take});remaining-=allocated;}
+      if(remaining>0){const next=[...groups.entries()].filter(([,a])=>a.length).sort((a,b)=>b[1].length-a[1].length);if(!next.length)break;for(let i=0;i<next.length&&remaining>0;i++){chosen.push(next[i][1].pop());remaining--;}}
+    }
+    pool=chosen;
+  }
   const ids=pool.map(c=>c.id);
   if(ids.length<=1){ceQueue=ids.slice();ceRecentQueues[ceActiveSubject]=ceQueue.slice();localStorage.setItem(CEQUEUEKEY,JSON.stringify(ceRecentQueues));return}
   const previous=Array.isArray(ceRecentQueues[ceActiveSubject])?ceRecentQueues[ceActiveSubject]:[];
@@ -453,7 +465,7 @@ function ceBuildQueue(){
 function ceRenderReview(){
  const review=$('ceReview'); if(!review)return;
  const items=ceReviewItems();
- $('ceCount').textContent=items.length+' '+(items.length===1?'questão':'questões');
+ $('ceCount').textContent=items.length+' '+(items.length===1?'questão':'questões')+(ceTimeLimitSec&&!ceShowingResult?' · Tempo restante '+String(Math.floor(Math.max(0,ceTimeLimitSec-ceElapsed())/60)).padStart(2,'0')+':'+String(Math.max(0,ceTimeLimitSec-ceElapsed())%60).padStart(2,'0'):'');
  if(!items.length){review.innerHTML='<p class="muted">Nenhuma questão cadastrada nesta matéria.</p>';$('ceReveal').hidden=true;$('ceFinish').hidden=false;return}
  if(ceShowingResult){
   const total=ceCorrectCount+ceWrongCount;
@@ -497,8 +509,8 @@ function ceRenderReview(){
  $('ceFinish').hidden=false;$('ceReveal').hidden=false;$('ceReveal').textContent=ceRevealed?(ceIndex===items.length-1?'Mostrar resultado':'Próxima pergunta'):'Mostrar resposta';$('ceReveal').style.flex='2 1 0';$('ceReveal').style.minWidth='0';
 }
 
-let ceSavedNote='',ceTimeAcc=0,ceTimeStart=0;
-function ceTimerReset(){ceTimeAcc=0;ceTimeStart=document.hidden?0:Date.now()}
+let ceSavedNote='',ceTimeAcc=0,ceTimeStart=0,ceTimeLimitSec=0,ceDeadlineTimer=null,ceTimedOut=false,ceRequestedCount=0;
+function ceTimerReset(limit=0){clearInterval(ceDeadlineTimer);ceTimeLimitSec=Math.max(0,Number(limit)||0);ceTimedOut=false;ceTimeAcc=0;ceTimeStart=document.hidden?0:Date.now();if(ceTimeLimitSec){ceDeadlineTimer=setInterval(()=>{const elapsed=ceElapsed();const left=Math.max(0,ceTimeLimitSec-elapsed);const label=$('ceCount');if(label)label.textContent=ceReviewItems().length+' questões · Tempo restante '+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');if(!ceShowingResult&&ceActiveSubject&&elapsed>=ceTimeLimitSec){ceTimedOut=true;ceTimeAcc=ceTimeLimitSec*1000;ceTimeStart=0;clearInterval(ceDeadlineTimer);ceShowResult(true)}},250)}}
 function ceElapsed(){return Math.max(0,Math.round((ceTimeAcc+(ceTimeStart?Date.now()-ceTimeStart:0))/1000))}
 document.addEventListener('visibilitychange',()=>{
  if(ceShowingResult||!ceActiveSubject)return;
@@ -517,7 +529,7 @@ function ceShowResult(){
  if(ceShowingResult)return;
  const total=ceCorrectCount+ceWrongCount;
  ceSavedNote='';
- if(total>0){
+ if(total>0||ceTimedOut){
   const sec=ceElapsed();ceTimeAcc=sec*1000;ceTimeStart=0;
   records.unshift({date:new Date().toISOString(),subject:ceCanonSubject(ceActiveSubject),sec,q:total,c:ceCorrectCount,source:'errors',notes:'Caderno de Erradas'});
   save();
@@ -595,7 +607,7 @@ function ceRender(){
   tile.append(name,count);tile.onclick=()=>{if(group.count)ceOpenStudy(group.name);else{ceOpen();$('ceSubject').value=group.name;$('ceModalHeading').textContent='Adicionar questão em '+group.name;$('ceQuestion').focus()}};catalog.appendChild(tile)
  });
  const exceptTile=document.createElement('button');exceptTile.type='button';exceptTile.className='fc-catalog-tile is-filled is-all';exceptTile.style.textAlign='left';exceptTile.style.cursor='pointer';const exceptName=document.createElement('strong');exceptName.textContent='Todas menos...';const exceptCount=document.createElement('span');exceptCount.className='fc-tile-count';exceptCount.textContent='Selecionar matérias para desconsiderar';exceptTile.append(exceptName,exceptCount);exceptTile.onclick=ceOpenExcept;catalog.appendChild(exceptTile);
- const simTile=document.createElement('button');simTile.type='button';simTile.className='fc-catalog-tile is-filled is-all';simTile.style.textAlign='left';simTile.style.cursor='pointer';const simName=document.createElement('strong');simName.textContent='Simuladão';const simCount=document.createElement('span');simCount.className='fc-tile-count';simCount.textContent=String(cadernoErradas.length).padStart(2,'0')+' '+(cadernoErradas.length===1?'questão':'questões')+' · todas as matérias';simTile.append(simName,simCount);simTile.onclick=()=>{if(cadernoErradas.length)ceOpenStudy(CE_ALL)};catalog.appendChild(simTile);
+ const simTile=document.createElement('button');simTile.type='button';simTile.className='fc-catalog-tile is-filled is-all';simTile.style.textAlign='left';simTile.style.cursor='pointer';const simName=document.createElement('strong');simName.textContent='Simuladão';const simCount=document.createElement('span');simCount.className='fc-tile-count';simCount.textContent=String(cadernoErradas.length).padStart(2,'0')+' '+(cadernoErradas.length===1?'questão':'questões')+' · todas as matérias';simTile.append(simName,simCount);simTile.onclick=()=>{if(!cadernoErradas.length)return;const active=cadernoErradas.filter(c=>!c.simuladoCycleCorrect);$('ceSimQuestionLimit').max=String(Math.max(1,active.length));$('ceSimQuestionLimit').value=String(Math.min(20,active.length));$('ceSimAvailable').textContent=active.length+' questões disponíveis no ciclo atual, distribuídas entre '+new Set(active.map(c=>c.subject)).size+' matérias.';$('ceSimConfigModal').hidden=false};catalog.appendChild(simTile);
  const columns=window.matchMedia('(max-width:640px)').matches?2:3;
  const totalTiles=groups.length+2;
  const emptySlots=(columns-(totalTiles%columns))%columns;
@@ -613,6 +625,7 @@ function ceEdit(id){const c=cadernoErradas.find(x=>x.id===id);if(!c)return;if(!$
 function ceExceptSubjectNames(){return [...new Set(cadernoErradas.map(c=>String(c&&c.subject||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base',numeric:true}))}function ceExceptRefresh(){const box=$('ceExceptSubjects');box.innerHTML='';const names=ceExceptSubjectNames();names.forEach((name,i)=>{const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid rgba(128,128,128,.25);border-radius:8px;font-weight:500';const cb=document.createElement('input');cb.type='checkbox';cb.value=name;cb.checked=ceExcludedSubjects.includes(name);cb.style.cssText='width:auto;margin:0';cb.onchange=ceExceptUpdateCount;label.append(cb,document.createTextNode(name));box.appendChild(label)});ceExceptUpdateCount()}
 function ceExceptUpdateCount(){const excluded=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);const available=cadernoErradas.filter(c=>!excluded.includes(String(c.subject||'').trim())).length;$('ceExceptCount').textContent=available+' '+(available===1?'questão disponível':'questões disponíveis')+' em '+ceExceptSubjectNames().filter(x=>!excluded.includes(x)).length+' matérias.';$('ceExceptStart').disabled=available===0}
 function ceOpenExcept(){ceExcludedSubjects=[];ceExceptRefresh();$('ceExceptModal').hidden=false}
+$('ceSimCancel').onclick=()=>{$('ceSimConfigModal').hidden=true};$('ceSimConfigModal').addEventListener('click',e=>{if(e.target===$('ceSimConfigModal') )$('ceSimCancel').click()});$('ceSimStart').onclick=()=>{const count=Math.floor(Number($('ceSimQuestionLimit').value)),minutes=Math.floor(Number($('ceSimMinutes').value)),available=cadernoErradas.filter(c=>!c.simuladoCycleCorrect).length;if(!Number.isInteger(count)||count<1||count>available){alert('Informe uma quantidade entre 1 e '+available+' questões.');return}if(!Number.isInteger(minutes)||minutes<1){alert('Informe um tempo de pelo menos 1 minuto.');return}$('ceSimConfigModal').hidden=true;ceOpenStudy(CE_ALL,{count,minutes})};
 $('ceExceptSelectAll').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=true);ceExceptUpdateCount()};$('ceExceptClear').onclick=()=>{$('ceExceptSubjects').querySelectorAll('input').forEach(x=>x.checked=false);ceExceptUpdateCount()};$('ceExceptCancel').onclick=()=>{$('ceExceptModal').hidden=true};$('ceExceptModal').addEventListener('click',e=>{if(e.target===$('ceExceptModal'))$('ceExceptCancel').click()});$('ceExceptStart').onclick=()=>{ceExcludedSubjects=[...$('ceExceptSubjects').querySelectorAll('input:checked')].map(x=>x.value);$('ceExceptModal').hidden=true;if(!cadernoErradas.some(c=>!ceExcludedSubjects.includes(c.subject))){alert('Não há questões disponíveis com essa seleção.');return}ceOpenStudy(CE_EXCEPT)};
 $('ceReveal').onclick=()=>{if(ceShowingResult){$('ceStudyClose').click();return}const items=ceReviewItems();if(!items.length)return;if(!ceRevealed){if(!ceSelectedAnswer){alert('Selecione uma alternativa antes de mostrar a resposta.');return}const c=items[Math.min(ceIndex,items.length-1)];c.attempts=(Number(c.attempts)||0)+1;c.lastAttemptAt=new Date().toISOString();if(ceSelectedAnswer===c.correct){ceCorrectCount++;c.correctAttempts=(Number(c.correctAttempts)||0)+1;ceSimuladoMarkCorrect(c)}else{ceWrongCount++;c.wrongAttempts=(Number(c.wrongAttempts)||0)+1}localStorage.setItem(CEKEY,JSON.stringify(cadernoErradas));ceAnsweredCount++;ceRevealed=true;ceRenderReview();return}if(ceIndex===items.length-1){ceShowResult();return}ceIndex++;ceRevealed=false;ceSelectedAnswer='';ceOptionOrder=[];ceRenderReview()};
 $('ceRestart').onclick=()=>{ceTimerReset();ceSimCycleCompleted=false;ceIndex=0;ceRevealed=false;ceSelectedAnswer='';ceCorrectCount=0;ceWrongCount=0;ceAnsweredCount=0;ceShowingResult=false;ceOptionOrder=[];ceBuildQueue();ceRenderReview()};
