@@ -352,3 +352,6 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 @media(max-width:640px){#dashboardPage .dashboard-goal{min-height:0!important;height:auto!important;padding:12px!important}#dashboardPage .dashboard-goals{gap:10px!important}#dashboardPage .streak-record{margin-top:5px}#dashboardPage .dashboard-goal .goal-hint{margin-top:5px}}
 #ceSimConfigModal .fc-modal-dialog .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media(max-width:520px){#ceSimConfigModal .fc-modal-dialog .grid{grid-template-columns:1fr}}
+
+/* Resumos semanais ficam visíveis no Histórico, com destaque, mas não entram nas métricas. */
+#rows tr.weekly-summary-row td{font-weight:700}
