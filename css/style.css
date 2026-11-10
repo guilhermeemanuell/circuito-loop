@@ -298,7 +298,7 @@ html.study-open,html.study-open body{overflow:hidden!important;overscroll-behavi
 .fc-rule p{margin:4px 0 0}.fc-rule .fc-rule-ex{font-size:14px;color:#5b6676}
 
 /* Efeito de cartão virando (Flashcards) */
-.fc-flip{perspective:1400px}
+.fc-flip{perspective:1400px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .fc-flip-inner{display:grid;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,.2,.2,1)}
 .fc-flip-inner.is-flipped{transform:rotateY(180deg)}
 .fc-flip .fc-flip-face{grid-area:1/1;box-sizing:border-box;min-height:220px;display:flex;flex-direction:column;justify-content:center;margin:0;padding:24px;border:1px solid #dce3ec;border-radius:14px;box-shadow:0 4px 14px rgba(30,41,59,.08);overflow-wrap:anywhere;backface-visibility:hidden;-webkit-backface-visibility:hidden}
